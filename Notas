@@ -1,0 +1,9 @@
+Para criar diretorio com o arquivo de vignette rodar: usethis::use_vignette("no_do_doc")
+
+Para incluir(importar) dados ou rodar: usethis::use_data(nome_do_dado)
+
+Exemplo:
+mtcars2=mtcars
+usethis::use_data(mtcars2)
+
+passphrase shaks1986
