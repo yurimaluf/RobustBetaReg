@@ -31,7 +31,7 @@ Psi_Beta=function(Beta,Gamma,y,X,Z,alpha)
   mu_star_alpha=suppressWarnings(digamma(a_alpha)-digamma(b_alpha))
   C_alpha=diag(exp(lbeta(a_alpha,b_alpha)-(1+alpha)*lbeta(a0,b0)))
   Tb=diag(x=sapply(mu_hat,function(k) (k-k^2)))
-  W_alpha=diag(Gen_Beta(y_star,mu_hat,phi_hat)^(alpha))
+  W_alpha=diag(degbeta(y_star,mu_hat,phi_hat)^(alpha))
   Phi=diag(phi_hat)
   
   return(t(X)%*%Phi%*%Tb%*%(W_alpha%*%(y_star-mu_star)-C_alpha%*%(mu_star_alpha-mu_star)))
@@ -72,7 +72,7 @@ Psi_Gamma=function(Beta,Gamma,y,X,Z,alpha)
   eta=mu_hat*(y_star-mu_star)+y_dagger-mu_dagger
   C_alpha=diag(exp(lbeta(a_alpha,b_alpha)-(1+alpha)*lbeta(a0,b0)))
   Tg=diag(phi_hat)
-  W_alpha=diag(Gen_Beta(y_star,mu_hat,phi_hat)^(alpha))
+  W_alpha=diag(degbeta(y_star,mu_hat,phi_hat)^(alpha))
   
   return(t(Z)%*%Tg%*%(W_alpha%*%eta-C_alpha%*%kappa_alpha))
 }
@@ -134,13 +134,22 @@ Robst.LMDPDE.Beta.Reg=function(y,x,z,start_theta,alpha,tolerance,maxit)
   }
   theta$x=rep(0,length(start_theta))
   theta$fvec=10
-  theta$msg=NULL
+  theta$msg=theta$error=NULL
+  #browser()
+  
   #options(warn = 2) #Convert warnings in errors 
-  theta=tryCatch(Newton.Raphson(start_theta,FUN = Psi_LMDPDE,alpha=alpha,y=y,X=x,Z=z,details = T,tol=tolerance,M=maxit),error=function(e){
+  # theta=tryCatch(Newton.Raphson(start_theta,FUN = Psi_LMDPDE,alpha=alpha,y=y,X=x,Z=z,details = T,tol=tolerance,M=maxit),error=function(e){
+  #   theta$msg<-e$message
+  #   theta$error=T
+  #   return(theta)})
+  # theta$x=theta$sol
+  #theta=within(theta,rm(sol))
+  
+  theta=tryCatch(nleqslv(start_theta,Psi_LMDPDE,y=y,X=x,Z=z,alpha=alpha,control=list(ftol=tolerance,maxit=maxit),jacobian=TRUE,method="Newton"),error=function(e){
     theta$msg<-e$message
     return(theta)})
-  theta$x=theta$sol
-  theta=within(theta,rm(sol))
+  theta$converged=F
+  if(all(abs(theta$fvec)<tolerance) & !all(theta$fvec==0)){theta$converged=T}
   return(theta)
 }
 
@@ -160,15 +169,16 @@ Robst.LMDPDE.Beta.Reg=function(y,x,z,start_theta,alpha,tolerance,maxit)
 #' 
 #' @return Return a tuning given by data driven algorithm selection
 #'
-Opt.Tuning.LMDPDE=function(y,x,z,tolerance,L,M)
+Opt.Tuning.LMDPDE=function(y,x,z,control)
 {
-  if(missing(M)){M=3}
-  if(missing(L)){L=0.02}
-  if(missing(tolerance)){tolerance=1e-3}
-  LMDPDE.list=list()
+  #browser()
+  if(missing(control)){control=robustbetareg.control()}
+  LMDPDE.list=LMDPDE.par=list()
   zq.t=NULL
   alpha_tuning=seq(0,0.5,0.02)
   K=length(alpha_tuning)
+  M=control$M
+  L=control$L
   n=length(y)
   unstable=F
   sqv.unstable=T
@@ -184,16 +194,20 @@ Opt.Tuning.LMDPDE=function(y,x,z,tolerance,L,M)
   Est.param=as.numeric(c(est.log.lik$coefficients$mean,est.log.lik$coefficients$precision))
   for(k in 1:(M+1))
   {
-    LMDPDE.par=tryCatch(LMDPDE.Beta.Reg(y,x,z,alpha=alpha_tuning[k],alpha.optimal=F,start_theta=Est.param,tolerance=tolerance),error=function(e) NULL)
+    LMDPDE.par=tryCatch(LMDPDE.Beta.Reg(y,x,z,alpha=alpha_tuning[k],alpha.optimal=F,start_theta=Est.param,control = control),error=function(e){LMDPDE.par$converged<-FALSE; return(LMDPDE.par)})
     if(!LMDPDE.par$converged)
     {
-      LMDPDE.par=tryCatch(LMDPDE.Beta.Reg(y,x,z,alpha=alpha_tuning[k],alpha.optimal=F,start_theta=ponto.inicial.temp,tolerance=tolerance),error=function(e) NULL)
+      LMDPDE.par=tryCatch(LMDPDE.Beta.Reg(y,x,z,alpha=alpha_tuning[k],alpha.optimal=F,start_theta=ponto.inicial.temp,control = control),error=function(e){LMDPDE.par$converged<-FALSE; return(LMDPDE.par)})
+    }
+    if(!LMDPDE.par$converged)
+    {
+      LMDPDE.par=tryCatch(LMDPDE.Beta.Reg(y,x,z,alpha=alpha_tuning[k],alpha.optimal=F,start_theta=ponto.inicial.robst,control = control),error=function(e){LMDPDE.par$converged<-FALSE; return(LMDPDE.par)})
     }
     if(LMDPDE.par$converged)
     {
       ponto.inicial.temp=Par.q(LMDPDE.par)
     }
-    if(is.null(LMDPDE.par) || any(is.na(Z.q(LMDPDE.par))) || is.null(SE.q(LMDPDE.par)))
+    if(any(is.na(Z.q(LMDPDE.par))) || is.null(SE.q(LMDPDE.par)))
     {
       sqv.unstable=F
       unstable=T
@@ -212,20 +226,20 @@ Opt.Tuning.LMDPDE=function(y,x,z,tolerance,L,M)
   k=k+1
   while(sqv.unstable)
   {
-    LMDPDE.par=tryCatch(LMDPDE.Beta.Reg(y,x,z,alpha=alpha_tuning[k],alpha.optimal=F,start_theta=Est.param,tolerance=tolerance),error=function(e) NULL)
+    LMDPDE.par=tryCatch(LMDPDE.Beta.Reg(y,x,z,alpha=alpha_tuning[k],alpha.optimal=F,start_theta=Est.param,control = control),error=function(e){LMDPDE.par$converged<-FALSE; return(LMDPDE.par)})
     if(!LMDPDE.par$converged)
     {
-      LMDPDE.par=tryCatch(LMDPDE.Beta.Reg(y,x,z,alpha=alpha_tuning[k],alpha.optimal=F,start_theta=ponto.inicial.temp,tolerance=tolerance),error=function(e) NULL)
+      LMDPDE.par=tryCatch(LMDPDE.Beta.Reg(y,x,z,alpha=alpha_tuning[k],alpha.optimal=F,start_theta=ponto.inicial.temp,control = control),error=function(e) {LMDPDE.par$converged<-FALSE; return(LMDPDE.par)})
     }
     if(!LMDPDE.par$converged)
     {
-      LMDPDE.par=tryCatch(LMDPDE.Beta.Reg(y,x,z,alpha=alpha_tuning[k],alpha.optimal=F,start_theta=ponto.inicial.robst,tolerance=tolerance),error=function(e) NULL)
+      LMDPDE.par=tryCatch(LMDPDE.Beta.Reg(y,x,z,alpha=alpha_tuning[k],alpha.optimal=F,start_theta=ponto.inicial.robst,control = control),error=function(e) {LMDPDE.par$converged<-FALSE; return(LMDPDE.par)})
     }
-    if(!is.null(LMDPDE.par) || LMDPDE.par$converged)
+    if(LMDPDE.par$converged)
     {
       ponto.inicial.temp=Par.q(LMDPDE.par)
     }
-    if(is.null(LMDPDE.par) || any(is.na(Z.q(LMDPDE.par))) || is.null(SE.q(LMDPDE.par)))
+    if(any(is.na(Z.q(LMDPDE.par))) || is.null(SE.q(LMDPDE.par)))
     {
       unstable=T
       break

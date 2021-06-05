@@ -4,18 +4,7 @@
 \alias{LMDPDE.Beta.Reg}
 \title{Robust Estimation - LMDPDE}
 \usage{
-LMDPDE.Beta.Reg(
-  y,
-  x,
-  z,
-  alpha,
-  start_theta,
-  alpha.optimal,
-  L,
-  M,
-  tolerance,
-  maxit
-)
+LMDPDE.Beta.Reg(y, x, z, alpha, start_theta, alpha.optimal, control)
 }
 \arguments{
 \item{y}{The numeric response vector (with values in (0,1)).}
@@ -29,14 +18,6 @@ LMDPDE.Beta.Reg(
 \item{start_theta}{A numeric vector with an initial guess of the root of estimation equation.}
 
 \item{alpha.optimal}{A logical value. If TRUE the tuning parameter should be selected automatic.}
-
-\item{L}{A parameter of auto selecting algorithm of tuning parameter (default L=0.02).}
-
-\item{M}{A integer parameter value of auto selecting algorithm of tuning parameter (default M=3).}
-
-\item{tolerance}{The function value tolerance.}
-
-\item{maxit}{The maximum number of iterations used by the algorithm.}
 }
 \value{
 Return a list of components:

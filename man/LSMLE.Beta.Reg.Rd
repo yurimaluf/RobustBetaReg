@@ -4,18 +4,7 @@
 \alias{LSMLE.Beta.Reg}
 \title{Robust Estimation - LSMLE}
 \usage{
-LSMLE.Beta.Reg(
-  y,
-  x,
-  z,
-  alpha,
-  alpha.optimal,
-  start_theta,
-  L,
-  M,
-  tolerance,
-  maxit
-)
+LSMLE.Beta.Reg(y, x, z, alpha, start_theta, alpha.optimal, control)
 }
 \arguments{
 \item{y}{The numeric response vector (with values in (0,1)).}
@@ -26,17 +15,9 @@ LSMLE.Beta.Reg(
 
 \item{alpha}{The tuning with values (0,1), for robust estimation. When alpha is equal zero is equivalent of MLE.}
 
-\item{alpha.optimal}{A logical value. If TRUE the tuning parameter should be selected automatic.}
-
 \item{start_theta}{A numeric vector with an initial guess of the root of estimation equation.}
 
-\item{L}{A parameter of auto selecting algorithm of tuning parameter (default L=0.02).}
-
-\item{M}{A integer parameter value of auto selecting algorithm of tuning parameter (default M=3).}
-
-\item{tolerance}{The function value tolerance.}
-
-\item{maxit}{The maximum number of iterations used by the algorithm.}
+\item{alpha.optimal}{A logical value. If TRUE the tuning parameter should be selected automatic.}
 }
 \value{
 Return a list of components:

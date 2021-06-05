@@ -4,7 +4,7 @@
 \alias{Opt.Tuning.LSMLE}
 \title{Auto Selecting tuning parameter algorithm}
 \usage{
-Opt.Tuning.LSMLE(y, x, z, tolerance, L, M)
+Opt.Tuning.LSMLE(y, x, z, control)
 }
 \arguments{
 \item{y}{The numeric response vector (with values in (0,1)).}
@@ -13,11 +13,11 @@ Opt.Tuning.LSMLE(y, x, z, tolerance, L, M)
 
 \item{z}{The numeric regressor matrix for precision model, defaulting to an intercept only.}
 
-\item{tolerance}{The function value tolerance.}
-
 \item{L}{A parameter of auto selecting algorithm of tuning parameter (default L=0.02).}
 
 \item{M}{A integer parameter value of auto selecting algorithm of tuning parameter (default M=3).}
+
+\item{tolerance}{The function value tolerance.}
 }
 \value{
 Return a tuning given by data driven algorithm selection

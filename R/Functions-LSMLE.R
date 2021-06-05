@@ -10,10 +10,6 @@
 #' @param alpha The tuning with values (0,1), for robust estimation. When alpha is equal zero is equivalent of MLE. 
 #' @param start_theta A numeric vector with an initial guess of the root of estimation equation.
 #' @param alpha.optimal A logical value. If TRUE the tuning parameter should be selected automatic.
-#' @param L A parameter of auto selecting algorithm of tuning parameter (default L=0.02).
-#' @param M A integer parameter value of auto selecting algorithm of tuning parameter (default M=3).
-#' @param tolerance The function value tolerance.
-#' @param maxit The maximum number of iterations used by the algorithm.
 #' 
 #' @return Return a list of components:
 #'  \itemize{
@@ -30,71 +26,67 @@
 #' }
 #'
 #' @export  
-LSMLE.Beta.Reg=function(y,x,z,alpha,alpha.optimal,start_theta,L,M,tolerance,maxit)
+LSMLE.Beta.Reg=function(y,x,z,alpha,start_theta,alpha.optimal,control)
 {
   #options(warn = 2) #Convert warnings in errors
   result=theta=list()
+  #browser()
   #Arguments Checking
-  if(missing(z)){z=rep(1,length(y))}
+  if(missing(control)){control=robustbetareg.control()}#Enquanto essa funcao for public, qnd private deletar
   if(missing(alpha.optimal)){alpha.optimal=TRUE}
   if(!missing(alpha)){alpha.optimal=FALSE}
-  if(missing(tolerance)){tolerance=1e-3}
-  if(missing(maxit)){maxit=150}
-  if(missing(L)){L=0.02}
-  if(missing(M)){M=3}
-  x=as.matrix(x)
-  z=as.matrix(z)
-  k=ncol(x)
-  m=ncol(z)
+  ocontrol = control
+  k=ncol(as.matrix(x))
+  m=ncol(as.matrix(z))
   if(alpha.optimal)
   {
-    return(Opt.Tuning.LSMLE(y,x,z,tolerance=tolerance,L=L,M=M))
+    return(Opt.Tuning.LSMLE(y,x,z,control))
   }
   if(missing(alpha))
   {
-    if(dim(z)[2]==1)
+    if(m==1)
     {
       mle=suppressWarnings(betareg(y~x[,-1]|1))  
     }
     else{mle=suppressWarnings(betareg(y~x[,-1]|z[,-1]))}
     theta$x=as.numeric(c(mle$coefficients$mean,mle$coefficients$precision))
     alpha=0
+    q=1-alpha
+    alpha=0
+    beta=theta$x[1:k]
+    gamma=theta$x[seq.int(length.out = m) + k]
+    coefficients = list(mean = beta, precision = gamma)
+    mu_hat=h1(x,beta)
+    phi_hat=h2(z,gamma)
     theta$inter=NULL
     theta$converged=mle$converged
-    theta$fvec=rep(0,length(theta$x))
+    theta$fvec=Psi_LSMLE(theta$x,y=y,X=x,Z=z,alpha=0)
     vcov=mle$vcov
     std.error.LSMLE=sqrt(diag(vcov))
+  }else{
+    #Point Estimation
+    q=1-alpha
+    theta=Robst.LSMLE.Beta.Reg(y,x,z,start_theta=start_theta,alpha=alpha,tolerance=control$tolerance,maxit=control$maxit)
+    # if(!theta$converged)
+    # {
+    #   initial.point.rbst=Initial.points(y,x,z)
+    #   theta=Robst.LSMLE.Beta.Reg(y,x,z,start_theta=initial.point.rbst,alpha=alpha,tolerance=control$tolerance,maxit=control$maxit)
+    #   initial.point=initial.point.rbst
+    # }
+    #Predict values
+    beta=theta$x[1:k]
+    gamma=theta$x[seq.int(length.out = m) + k]
+    coefficients = list(mean = beta, precision = gamma)
+    mu_hat=h1(x,beta)
+    phi_hat=h2(z,gamma)
+    #Expected Standard Error
+    M.LSMLE=LSMLE_Cov_Matrix(mu_hat,phi_hat,x,z,alpha=alpha)
+    vcov=M.LSMLE$Cov
+    std.error.LSMLE=M.LSMLE$Std.Error
   }
-  if(missing(start_theta))
-  {
-    #start_theta=Initial.points(y,X=x,Z=z)
-    est.log.lik=tryCatch(suppressWarnings(betareg(y~x[,-1]|1)),error=function(e) NULL)
-    start_theta=as.numeric(c(est.log.lik$coefficients$mean,est.log.lik$coefficients$precision))
-  }
-  initial.point=start_theta
-  #Point Estimation
-  q=1-alpha
-  theta=Robst.LSMLE.Beta.Reg(y,x,z,start_theta=start_theta,alpha=alpha,tolerance=tolerance,maxit=maxit)
-  if(!theta$converged)
-  {
-    initial.point.rbst=Initial.points(y,x,z)
-    theta=Robst.LSMLE.Beta.Reg(y,x,z,start_theta=initial.point.rbst,alpha=alpha,tolerance=tolerance,maxit=maxit)
-    if(!theta$converged){initial.point=initial.point.rbst}
-  }
-  #Predict values
-  beta=theta$x[1:ncol(x)]
-  gamma=theta$x[seq.int(length.out = m) + k]
-  coefficients = list(mean = beta, precision = gamma)
-  mu_hat=h1(x,beta)
-  phi_hat=h2(z,gamma)
-  y_star=log(y)-log(1-y)
-  
-  #Expected Standard Error
-  M.LSMLE=LSMLE_Cov_Matrix(mu_hat,phi_hat,x,z,alpha=alpha)
-  vcov=M.LSMLE$Cov
-  std.error.LSMLE=M.LSMLE$Std.Error
   
   #Register of output values 
+  y_star=log(y)-log(1-y)
   str1=str2=NULL
   result$coefficients=coefficients
   result$vcov=vcov
@@ -103,11 +95,12 @@ LSMLE.Beta.Reg=function(y,x,z,alpha,alpha.optimal,start_theta,L,M,tolerance,maxi
   result$mu_predict=mu_hat
   if(m==1){result$phi_predict=phi_hat[1]}
   if(m!=1){result$phi_predict=phi_hat}
-  result$initial.points=initial.point
-  result$weights=(Gen_Beta(y_star,mu_hat,phi_hat/q))^(alpha) #Pesos 
+  result$start=start_theta #Alterar caso optar por duas tentativas de ponto inicial
+  result$weights=(degbeta(y_star,mu_hat,phi_hat/q))^(alpha) #Pesos 
   result$Tuning=alpha
   result$Psi.Value=theta$fvec
   result$Res.Beta=Residual_Beta(mu_hat,phi_hat,y=y,X=x,Z=z)
+  result$x=list(mean = x, precision = z)
   if(any(is.na(std.error.LSMLE)))
   {
     str1="Standard-Error is unvailable"
@@ -163,5 +156,86 @@ LSMLE.Beta.Reg=function(y,x,z,alpha,alpha.optimal,start_theta,L,M,tolerance,maxi
     result$std.error=coef.std.error
     result$Tab=bg
   }
+  class(result)="LSMLE"
   return(result)
+}
+
+
+#' @export
+WaldTypeTest.LSMLE=function(object,g,...)
+{
+  result=list()
+  #browser()
+  p=c(object$coefficient$mean,object$coefficient$precision)
+  M=numDeriv::jacobian(g,p, ...)
+  m=g(p,...)
+  r=length(m)
+  n=length(object$mu_predict)
+  if(Matrix::rankMatrix(M)[1]!=r)
+  {
+    #return(result$msg="The Rank Matrix is not supported")
+  }
+  if(!object$converged)
+  {
+    ###
+  }
+  V=object$vcov
+  W_alpha=t(m)%*%solve(M%*%V%*%t(M))%*%(m)
+  result$converged=object$converged
+  result$W.alpha=as.numeric(W_alpha)
+  result$df=r
+  result$pValue=as.numeric(1-pchisq(W_alpha,df=r))
+  result$msg="Results based on LSMLE."
+  
+  return(result)
+}
+
+
+#' @export  
+plotenvelope.LSMLE=function(robustbetareg.obj,ylim,n.sim,index,control)
+{
+  if(missing(n.sim)){n.sim=100}
+  if(missing(control)){control=robustbetareg.control()}
+  if(missing(index)){index=NULL}
+  if(missing(ylim)){ylim=NULL}
+  y.sim=ResEnvelop=NULL
+  sss=robustbetareg.obj$start
+  x=as.matrix(robustbetareg.obj$x$mean)
+  z=as.matrix(robustbetareg.obj$x$precision)
+  n=length(robustbetareg.obj$mu_predict)
+  a=robustbetareg.obj$mu_predict*robustbetareg.obj$phi_predict
+  b=(1-robustbetareg.obj$mu_predict)*robustbetareg.obj$phi_predict
+  for(i in 1:n)
+  {
+    y.temp=pmax(pmin(rbeta(n.sim,a[i],b[i]),1-.Machine$double.eps),.Machine$double.eps)
+    y.sim=cbind(y.sim,y.temp)
+  }
+  #browser()
+  for(i in 1:n.sim)
+  {
+    LSMLE.sim=LSMLE.Beta.Reg(y=y.sim[i,],x=x,z=z,alpha=robustbetareg.obj$Tuning,start_theta=robustbetareg.obj$start,control=control )
+    if(LSMLE.sim$converged)
+    {
+      res_beta=sort(LSMLE.sim$Res.Beta,decreasing = F)
+      ResEnvelop=rbind(ResEnvelop,res_beta)
+    }
+  }
+  Envelope=apply(ResEnvelop,2,quantile,c(0.025,0.5,1-0.025))
+  if(is.null(ylim))
+  {
+    ylim <- range(Envelope[1,],Envelope[2,],Envelope[3,],robustbetareg.obj$Res.Beta)  
+  }
+  par(mar=c(5.0,5.0,4.0,2.0))
+  reg=qqnorm(robustbetareg.obj$Res.Beta, main="", xlab="Normal quantiles", ylab="Residuals", ylim=ylim, pch=16, cex=1.0, cex.lab=1.0, cex.axis=1.0, cex.main=1.0)
+  if(!is.null(index))
+  {
+    points(reg$x[index],reg$y[index],pch=20)
+    text(reg$x[index],reg$y[index],paste0("(",index,")"),pos = c(1))  
+  }
+  par(new=T)
+  qqnorm(Envelope[1,],axes=F,main = "",xlab="",ylab="",type="l",ylim=ylim,lty=1,lwd=1.0)
+  par(new=T)
+  qqnorm(Envelope[2,],axes=F,main = "",xlab="",ylab="", type="l",ylim=ylim,lty=2,lwd=1.0)
+  par(new=T)
+  qqnorm(Envelope[3,],axes=F,xlab="",main = "", ylab="", type="l",ylim=ylim,lty=1,lwd=1.0)
 }

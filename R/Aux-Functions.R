@@ -1,3 +1,93 @@
+#' Robust Beta Regression 
+#' 
+#' Fit robust beta regression models for rates and proportionsvia LMDPDE and LSMLE using a parametrization with mean (depending through a link function on the covariates) and precision parameter (called phi).
+#' 
+#' For more details see:...
+#' 
+#' @param formula symbolic description of the model (of type y ~ x or y ~ x | z).
+#' @param data arguments controlling formula.
+#' @param alpha the tuning with values (0,1), for robust estimation. When alpha is equal zero is equivalent of MLE. 
+#' @param type character specification of the type of estimator. Currently, LMDPDE (default) and LSMLE.
+#' @param start a numeric vector with an initial guess of the root of estimation equation.
+#' @param alpha.optimal a logical value. If TRUE the tuning parameter should be selected automatic.
+#' @param control a list of control arguments specified via \code{\link[RobustBetaReg:robustbetareg.control]{robustbetareg.control}}. 
+#' 
+#' @return Return a list of components:
+#'  \itemize{
+#'   \item coefficients - the vector with elements "mean" and "precision" containing the coefficients from the respective models
+#'   \item vcov - the covariance matrix of all parameters in the model
+#'   \item mu_hat - the vector of fitted means
+#'   \item phi_hat - the vector of predicted precision
+#'   \item weights - the weights used
+#'   \item Tuning - the employed tuning parameter
+#'   \item Res.Beta - a vector of standardized weighted residual 2
+#'   \item start - the starting values for the parameters passed to the Newton-Raphson algorithm
+#'   \item std.error - the standard error vector of coefficients
+#'   \item Tab - the summary table of overall result.
+#' }
+#'
+#' @export  
+robustbetareg = function(formula,data,alpha,type=c("LMDPDE","LSMLE"),alpha.optimal, start, control=robustbetareg.control(...), ...)
+{
+  cl = match.call()
+  type = match.arg(type)
+  ocontrol=control
+  #browser()
+  if(missing(data)){data=environment(formula)}
+  if(missing(alpha.optimal)){alpha.optimal=TRUE}
+  if(!missing(alpha)){alpha.optimal=FALSE}
+  mf = match.call(expand.dots = FALSE)
+  m = match(c("formula", "data"), names(mf), 0L)
+  mf = mf[c(1L, m)]
+  mf$drop.unused.levels <- TRUE
+  formula = Formula::as.Formula(formula)
+  mf1=model.frame(formula,data=data)
+  y=model.response(mf1)
+  x=model.matrix(formula,data=mf1,rhs = 1L)
+  z=model.matrix(formula,data=mf1,rhs = 2L)
+  if(missing(start))
+  {
+    est.mle=betareg(formula,data)
+    start=c(est.mle$coefficients$mean,est.mle$coefficients$precision)
+  }
+  start_theta=start
+  if(type=="LMDPDE")
+  {
+    result=LMDPDE.Beta.Reg(y,x,z,alpha=alpha,start_theta,alpha.optimal,control=control)
+  }
+  if(type=="LSMLE")
+  {
+    result=LSMLE.Beta.Reg(y,x,z,alpha=alpha,start_theta,alpha.optimal,control=control)
+  }
+  result$call <- cl
+  result$formula=as.formula(formula)
+  return(result)
+}
+
+
+#' Control Parameter for Robust Beta Regression 
+#' 
+#' Various parameters that control fitting of robust beta regression models using robustbetareg
+#' 
+#' For more details see:...
+#' 
+#' @param tolerance numeric tolerance for convergence.
+#' @param maxit integer specifying the maxit argument of iterations used by the Newton-Raphson algorithm.
+#' @param L A parameter of auto selecting algorithm of tuning parameter (default L=0.02).
+#' @param M A integer parameter value of auto selecting algorithm of tuning parameter (default M=3).
+#' 
+#' @return A list with the arguments specified.
+#'
+#' @export  
+robustbetareg.control=function(tolerance=1e-3,maxit=250,L=0.02,M=3,...)
+{
+  #browser()
+  result <- list(tolerance = tolerance, maxit = maxit, L=L, M=M)
+  result <- c(result, list(...))
+  return(result)
+}
+
+
 #' Inv-Logit Link function
 #' 
 #' Inverse logit link function for parameter mu  
@@ -8,7 +98,8 @@
 #' @param B Beta parameter vector 
 #' 
 #' @return Return mu parameter for each observation
-#' 
+#'
+#' @export 
 h1=function(x,B)
 {
   #x=x.intercept(x)
@@ -30,6 +121,7 @@ h1=function(x,B)
 #' 
 #' @return Return mu parameter for each observation
 #' 
+#' @export
 h2=function(z,G)
 {
   z=as.matrix(z)
@@ -37,7 +129,7 @@ h2=function(z,G)
   return(exp(k))
 }
 
-#' EGB of the second type
+#' The EGB of the second type
 #' 
 #' Exponential Generalized Beta (EGB) of the second type density function.
 #' 
@@ -51,7 +143,7 @@ h2=function(z,G)
 #' @return Return value of density function.
 #' 
 #'@export 
-Gen_Beta=function(y_star,mu,phi,log)
+degbeta=function(y_star,mu,phi,log)
 {
   if(missing(log)){log=F}
   a0=mu*phi
@@ -64,6 +156,26 @@ Gen_Beta=function(y_star,mu,phi,log)
   }
   return(k)
 }
+
+#' The EGB of the second type
+#' 
+#' Random generation for Exponential Generalized Beta (EGB) of the second type.
+#' 
+#' For more details see 
+#' 
+#' @param n number of observations
+#' @param mu mu parameter
+#' @param phi phi parameter
+#' 
+#' @return Return value of density function.
+#' 
+#'@export 
+regbeta=function(n,mu,phi)
+{
+  h=rbeta(mu*phi,(1-mu)*phi)
+  return(log(h)-log(1-h))
+}
+
 
 #' Newton-Raphson
 #' 
@@ -87,7 +199,7 @@ Newton.Raphson=function(x,M,tol,details,FUN=f, ...)
   f=FUN
   x.h=p=x
   y.h=f(x, ...)
-  #y.h=f(p0)#teste
+  #browser()
   msg1=msg2=NULL
   for(i in 1:M)
   {
@@ -111,7 +223,8 @@ Newton.Raphson=function(x,M,tol,details,FUN=f, ...)
       break
     }
     #Solve(A,b)
-    w=solve(A)%*%b
+    #w=solve(A)%*%b
+    w=ginv(A)%*%b
     p=p+w
     x.h=rbind(as.vector(p),x.h)
     y.h=rbind(f(p,...),y.h)  
@@ -223,8 +336,8 @@ Residual_Gamma=function(mu_hat,phi_hat,y,X,Z)
 #'
 Initial.points=function(y,X,Z)
 {
-  #X=x.intercept(X)
-  #Z=x.intercept(Z)
+  X=as.matrix(X)
+  Z=as.matrix(Z)
   x2=X[,-1]
   ystar=log(y/(1-y))
   lmbeta=suppressWarnings(robustbase::lmrob(ystar~x2))
@@ -319,3 +432,74 @@ SE.q=function(ObjRbst)
   return(c(ObjRbst$std.error$se.mean,ObjRbst$std.error$se.precision))
 }
 
+#' Envelope Bla
+#' 
+#' Funcao TESTE.  
+#' 
+#' This function.
+#' 
+#' @param x1 Numero
+#' @param x2 Numero 
+#' 
+#' @return Return a soma 
+#' 
+#' @export
+soma=function(x1,x2)
+{
+  h=x1+x2
+  return(h)
+}
+
+#' Simulated Envelope of Residuals
+#'  
+#'  
+#'    
+#' 
+#' Plot a simulated envelope of beta residuals, from LMDPDE and LSMLE.
+#' 
+#' 
+#' 
+#' 
+#' @param robustbetareg.obj Object of robust beta regression (see \code{\link[RobustBetaReg:robustbetareg]{robustbetareg}}). 
+#' @param n.sim the number of simulation sample 
+#' @param ylim the y limits of the plot
+#' @param index index of points to draw 
+#' @param control a list of control arguments specified via \code{\link[RobustBetaReg:robustbetareg.control]{robustbetareg.control}}. 
+#' 
+#' @return Return a simulated envelope graphic.
+#' 
+#' @examples 
+#' rbr.obj=robustbetareg(I(food/income)~income+persons|1,data=FoodExpenditure,alpha=0.08)
+#' plotenvelope(rbr.obj,n.sim=100)
+#' 
+#' @export
+plotenvelope=function(robustbetareg.obj,n.sim,ylim,index,control)
+{
+ UseMethod("plotenvelope")
+}
+
+#' Robust Wald-type Tests
+#'  
+#'  
+#'    
+#' 
+#' Wald-type tests for both simple and composite hypothesis for independent but non-homogeneous observations, based on LMDPDE and LSMLE.
+#' 
+#' 
+#' 
+#' @param object Object of robust beta regression estimator
+#' @param g A funtion representing the null hypothesis to be tested  
+#' @param ... Further arguments to be passed 
+#' 
+#' @references \url{https://link.springer.com/article/10.1007%2Fs00184-018-0653-4}
+#' 
+#' @examples 
+#' rbr.obj=robustbetareg(I(food/income)~income+persons|1,data=FoodExpenditure,alpha=0.08)
+#' g=function(theta,B){theta[2:3]-B}#Hiphothesis to be tested
+#' WaldTypeTest(rbr.obj,g,B=c(0,0))#Testing income=persons=0
+#' 
+#' @export
+WaldTypeTest=function(object,g,...)
+{
+  UseMethod("WaldTypeTest")
+}

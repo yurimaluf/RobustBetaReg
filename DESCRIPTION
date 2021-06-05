@@ -8,11 +8,17 @@ Authors@R:
            email = "first.last@example.com",
            comment = c(ORCID = "YOUR-ORCID-ID"))
 Description: What the package does (one paragraph).
-Depends: R (>= 3.0.0), betareg
+Depends: R (>= 3.0.0), betareg, nleqslv, Formula
 License: GPL-3
 Encoding: UTF-8
 LazyData: true
-Imports: Rmpfr, numDeriv, robustbase
+Imports: 
+    Rmpfr,
+    numDeriv,
+    Formula,
+    robustbase,
+    Matrix,
+    Rcpp
 Suggests: 
     knitr,
     ggplot,
@@ -22,4 +28,5 @@ Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.1.1
 VignetteBuilder: knitr
 Config/testthat/edition: 3
-
+LinkingTo: 
+    Rcpp
