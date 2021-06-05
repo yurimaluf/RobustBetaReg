@@ -8,4 +8,6 @@ Exemplo:
 mtcars2=mtcars
 usethis::use_data(mtcars2)
 
+teste
+
 
