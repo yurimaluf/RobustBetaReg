@@ -1,2 +1,2 @@
 # RobustBetaReg
-Robust beta regression for modeling beta-distributed dependent variables, e.g., rates and proportions
+Robust beta regression for modeling beta-distributed dependent variables, e.g., rates and proportions, with outliers 
