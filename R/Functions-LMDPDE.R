@@ -233,3 +233,10 @@ plotenvelope.LMDPDE=function(robustbetareg.obj,ylim,n.sim,index,control)
   par(new=T)
   qqnorm(Envelope[3,],axes=F,xlab="",main = "", ylab="", type="l",ylim=ylim,lty=1,lwd=1.0)
 }
+
+
+#' @export
+print.LMDPDE=function(obj)
+{
+  print(list(Call=obj$call,Summary=obj$Tab))
+}
