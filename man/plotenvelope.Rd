@@ -4,27 +4,33 @@
 \alias{plotenvelope}
 \title{Simulated Envelope of Residuals}
 \usage{
-plotenvelope(robustbetareg.obj, n.sim, ylim, index, control)
+plotenvelope(
+  robustbetareg.obj,
+  n.sim,
+  conf,
+  control = robustbetareg.control(...),
+  ...
+)
 }
 \arguments{
-\item{robustbetareg.obj}{Object of robust beta regression (see \code{\link[RobustBetaReg:robustbetareg]{robustbetareg}}).}
+\item{robustbetareg.obj}{Fitted model object of class "LMDPDE" or "LSMLE" (see \code{\link[RobustBetaReg:robustbetareg]{robustbetareg}}).}
 
-\item{n.sim}{the number of simulation sample}
+\item{n.sim}{the number of simulation sample. Deafault n.sim=50.}
 
-\item{ylim}{the y limits of the plot}
-
-\item{index}{index of points to draw}
+\item{conf}{the confidence level of the envelopes required. The default is to find 95\% confidence envelopes.}
 
 \item{control}{a list of control arguments specified via \code{\link[RobustBetaReg:robustbetareg.control]{robustbetareg.control}}.}
+
+\item{...}{other parameters to be passed through to plotting functions.}
 }
 \value{
 Return a simulated envelope graphic.
 }
 \description{
-Plot a simulated envelope of beta residuals, from LMDPDE and LSMLE.
+Plot a simulated envelope of beta residuals, from LMDPDE and LSMLE objects.
 }
 \examples{
-rbr.obj=robustbetareg(I(food/income)~income+persons|1,data=FoodExpenditure,alpha=0.08)
-plotenvelope(rbr.obj,n.sim=100)
+rbr=robustbetareg(I(food/income)~income+persons|1,data=FoodExpenditure,alpha=0.08)
+plotenvelope(rbr,n.sim=100)
 
 }

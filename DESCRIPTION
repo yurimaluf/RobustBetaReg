@@ -1,19 +1,22 @@
 Package: RobustBetaReg
 Title: What the Package Does (One Line, Title Case)
-Version: 0.0.0.9000
+Version: 0.0.1.000
 Authors@R: 
-    person(given = "First",
-           family = "Last",
+    person(given = "Yuri",
+           family = "Maluf",
            role = c("aut", "cre"),
-           email = "first.last@example.com",
+           email = "yurimaluf@gmail.com",
            comment = c(ORCID = "YOUR-ORCID-ID"))
 Description: What the package does (one paragraph).
-Depends: R (>= 3.0.0), betareg, nleqslv, Formula
+Depends: R (>= 3.0.0), betareg, nleqslv
 License: GPL-3
 Encoding: UTF-8
 LazyData: true
 Imports: 
     Rmpfr,
+    rstudioapi,
+    crayon,
+    MASS,
     numDeriv,
     Formula,
     robustbase,

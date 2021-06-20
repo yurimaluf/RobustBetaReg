@@ -4,12 +4,12 @@
 \alias{WaldTypeTest}
 \title{Robust Wald-type Tests}
 \usage{
-WaldTypeTest(object, g, ...)
+WaldTypeTest(object, FUN, ...)
 }
 \arguments{
-\item{object}{Object of robust beta regression estimator}
+\item{object}{fitted model object of class "LMDPDE" or "LSMLE"}
 
-\item{g}{A funtion representing the null hypothesis to be tested}
+\item{FUN}{the function representing the null hypothesis to be tested}
 
 \item{...}{Further arguments to be passed}
 }
@@ -17,11 +17,11 @@ WaldTypeTest(object, g, ...)
 Wald-type tests for both simple and composite hypothesis for independent but non-homogeneous observations, based on LMDPDE and LSMLE.
 }
 \examples{
-rbr.obj=robustbetareg(I(food/income)~income+persons|1,data=FoodExpenditure,alpha=0.08)
+rbr=robustbetareg(I(food/income)~income+persons|1,data=FoodExpenditure,alpha=0.08)
 g=function(theta,B){theta[2:3]-B}#Hiphothesis to be tested
-WaldTypeTest(rbr.obj,g,B=c(0,0))#Testing income=persons=0
+WaldTypeTest(rbr,FUN=g,B=c(0,0))#Testing income=persons=0
 
 }
 \references{
-\url{https://link.springer.com/article/10.1007\%2Fs00184-018-0653-4}
+\href{https://www.tandfonline.com/doi/abs/10.1080/02664760701834931}{Basu, A., Ghosh, A., Martin, N. et al. Robust Wald-type tests for non-homogeneous observations based on the minimum density power divergence estimator. Metrika 81, 493–522 (2018)}
 }

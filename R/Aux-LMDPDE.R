@@ -1,151 +1,86 @@
-#' Score Function LMDPDE - Beta
-#' 
-#' Modified Score Function LMDPDE - Beta
-#' 
-#' For more details see: 
-#' 
-#' @param Beta ...
-#' @param Gamma ...
-#' @param y ...
-#' @param X ...
-#' @param Z ...
-#' @param alpha ...
-#' 
-#' @return Return value ...
-#'
-Psi_Beta=function(Beta,Gamma,y,X,Z,alpha)
+# Score Function LMDPDE - Beta
+Psi_Beta=function(Beta,Gamma,y,X,Z,alpha,linkobj)
 {
-  limit=1e-10
-  n=length(y)
-  mu_hat=h1(X,Beta)
-  phi_hat=h2(Z,Gamma)
-  #options(digits=7)
+  mu_hat=linkobj$linkfun.mu$inv.link(X%*%Beta)
+  phi_hat=linkobj$linkfun.phi$inv.link(Z%*%Gamma)
   
   a0=mu_hat*phi_hat
   b0=(1-mu_hat)*phi_hat
   a_alpha=a0*(1+alpha)
   b_alpha=b0*(1+alpha)
   
-  y_star=log(y/(1-y))
+  y_star=log(y)-log(1-y)
   mu_star=suppressWarnings(digamma(a0)-digamma(b0))
   mu_star_alpha=suppressWarnings(digamma(a_alpha)-digamma(b_alpha))
-  C_alpha=diag(exp(lbeta(a_alpha,b_alpha)-(1+alpha)*lbeta(a0,b0)))
-  Tb=diag(x=sapply(mu_hat,function(k) (k-k^2)))
-  W_alpha=diag(degbeta(y_star,mu_hat,phi_hat)^(alpha))
-  Phi=diag(phi_hat)
-  
-  return(t(X)%*%Phi%*%Tb%*%(W_alpha%*%(y_star-mu_star)-C_alpha%*%(mu_star_alpha-mu_star)))
+  #Matrixes
+  Phi.Tb=phi_hat*inverse(linkobj$linkfun.mu$d.linkfun(mu_hat))
+  Phi.Tb.W_alpha=diag(Phi.Tb*degbeta(y_star,mu_hat,phi_hat)^(alpha))
+  Phi.Tb.C_alpha=diag(Phi.Tb*exp(lbeta(a_alpha,b_alpha)-(1+alpha)*lbeta(a0,b0)))
+
+  return(t(X)%*%(Phi.Tb.W_alpha%*%(y_star-mu_star)-Phi.Tb.C_alpha%*%(mu_star_alpha-mu_star)))
 }
 
-#' Score Function LMDPDE - Gamma
-#' 
-#' Modified Score Function LMDPDE - Gamma
-#' 
-#' For more details see: 
-#' 
-#' @param Beta ...
-#' @param Gamma ...
-#' @param y ...
-#' @param X ...
-#' @param Z ...
-#' @param alpha ...
-#' 
-#' @return Return value ...
-#'
-Psi_Gamma=function(Beta,Gamma,y,X,Z,alpha)
+# Score Function LMDPDE - Gamma
+Psi_Gamma=function(Beta,Gamma,y,X,Z,alpha,linkobj)
 {
-  n=length(y)
-  mu_hat=h1(X,Beta)
-  phi_hat=h2(Z,Gamma)
+  d.link.phi=linkobj$linkfun.phi$d.linkfun
+  inv.link.mu=linkobj$linkfun.mu$inv.link
+  inv.link.phi=linkobj$linkfun.phi$inv.link
   
+  mu_hat=inv.link.mu(X%*%Beta)
+  phi_hat=inv.link.phi(Z%*%Gamma)
+
   a0=mu_hat*phi_hat
   b0=(1-mu_hat)*phi_hat
   a_alpha=a0*(1+alpha)
   b_alpha=b0*(1+alpha)
   
-  y_star=log(y/(1-y))
   y_dagger=log(1-y)
+  y_star=log(y)-y_dagger
   mu_dagger=suppressWarnings(digamma(b0)-digamma(phi_hat))
   mu_star=suppressWarnings(digamma(a0)-digamma(b0))
   mu_star_alpha=suppressWarnings(digamma(a_alpha)-digamma(b_alpha))
   kappa_alpha=suppressWarnings(mu_hat*(mu_star_alpha-mu_star)+digamma(b_alpha)-digamma(b0)+digamma(phi_hat)-digamma(phi_hat*(1+alpha)))
   eta=mu_hat*(y_star-mu_star)+y_dagger-mu_dagger
-  C_alpha=diag(exp(lbeta(a_alpha,b_alpha)-(1+alpha)*lbeta(a0,b0)))
-  Tg=diag(phi_hat)
-  W_alpha=diag(degbeta(y_star,mu_hat,phi_hat)^(alpha))
-  
-  return(t(Z)%*%Tg%*%(W_alpha%*%eta-C_alpha%*%kappa_alpha))
+  C_alpha=exp(lbeta(a_alpha,b_alpha)-(1+alpha)*lbeta(a0,b0))
+  Tg=inverse(d.link.phi(phi_hat))
+  W_alpha=degbeta(y_star,mu_hat,phi_hat)^(alpha)
+  #Matrixes
+  Tg.W_alpha=diag(Tg*W_alpha)
+  Tg.C_alpha=diag(Tg*C_alpha)
+  return(t(Z)%*%(Tg.W_alpha%*%eta-Tg.C_alpha%*%kappa_alpha))
 }
 
 
-#' Modified Score Vector - LMDPDE
-#' 
-#' Modified Score Function LMDPDE - Gamma
-#' 
-#' For more details see: 
-#' 
-#' @param Theta ...
-#' @param y ...
-#' @param X ...
-#' @param Z ...
-#' @param alpha ...
-#' 
-#' @return Return value ...
-#'
-Psi_LMDPDE=function(Theta,y,X,Z,alpha)
+# Modified Score Vector - LMDPDE
+Psi_LMDPDE=function(Theta,y,X,Z,alpha,linkobj)
 {
   X=as.matrix(X)
   Z=as.matrix(Z)
   Beta=Theta[1:ncol(X)]
   Gamma=Theta[1:ncol(Z)+ncol(X)]
   
-  psi_beta=Psi_Beta(Beta,Gamma,y=y,X=X,Z=Z,alpha=alpha)
-  psi_gamma=Psi_Gamma(Beta,Gamma,y=y,X=X,Z=Z,alpha=alpha)
+  psi_beta=Psi_Beta(Beta,Gamma,y=y,X=X,Z=Z,alpha=alpha,linkobj=linkobj)
+  psi_gamma=Psi_Gamma(Beta,Gamma,y=y,X=X,Z=Z,alpha=alpha,linkobj=linkobj)
   
   return(c(psi_beta,psi_gamma))
 }
 
-#' Robust Point Estimation - LMDPDE
-#' 
-#' Robust point estimation by estimating equation via LSMLE
-#' 
-#' For more details see: 
-#' 
-#' @param Theta ...
-#' @param y ...
-#' @param x ...
-#' @param z ...
-#' @param alpha ...
-#' 
-#' @return Return value ...
-#'
-Robst.LMDPDE.Beta.Reg=function(y,x,z,start_theta,alpha,tolerance,maxit)
+# Robust Point Estimation - LMDPDE
+Robst.LMDPDE.Beta.Reg=function(y,x,z,start_theta,alpha,linkobj,tolerance,maxit)
 {
   theta=list()
   if(missing(tolerance)){tolerance=1e-3}
   if(missing(maxit)){maxit=150}
-  if(missing(start_theta)){
-    if(dim(z)[2]==1)
-    {
-      mle=suppressWarnings(betareg(y~x[,-1]|1))  
-    }
-    else{mle=suppressWarnings(betareg(y~x[,-1]|z[,-1]))}
-    start_theta=as.numeric(c(mle$coefficients$mean,mle$coefficients$precision))
+  if(missing(start_theta))
+  {
+    mle=tryCatch(suppressWarnings(betareg.fit(x,y,z,link=attributes(linkobj)$name.link.mu,link.phi=attributes(linkobj)$name.link.phi)),error=function(e) NULL)
+    start_theta=as.numeric(do.call("c",mle$coefficients))
   }
   theta$x=rep(0,length(start_theta))
   theta$fvec=10
   theta$msg=theta$error=NULL
-  #browser()
-  
-  #options(warn = 2) #Convert warnings in errors 
-  # theta=tryCatch(Newton.Raphson(start_theta,FUN = Psi_LMDPDE,alpha=alpha,y=y,X=x,Z=z,details = T,tol=tolerance,M=maxit),error=function(e){
-  #   theta$msg<-e$message
-  #   theta$error=T
-  #   return(theta)})
-  # theta$x=theta$sol
-  #theta=within(theta,rm(sol))
-  
-  theta=tryCatch(nleqslv(start_theta,Psi_LMDPDE,y=y,X=x,Z=z,alpha=alpha,control=list(ftol=tolerance,maxit=maxit),jacobian=TRUE,method="Newton"),error=function(e){
+  theta=tryCatch(nleqslv(start_theta,Psi_LMDPDE,y=y,X=x,Z=z,alpha=alpha,linkobj=linkobj,control=list(ftol=tolerance,maxit=maxit),jacobian=TRUE,method="Newton"),error=function(e){
     theta$msg<-e$message
     return(theta)})
   theta$converged=F
@@ -154,25 +89,12 @@ Robst.LMDPDE.Beta.Reg=function(y,x,z,start_theta,alpha,tolerance,maxit)
 }
 
 
-#' Auto Selecting tuning parameter algorithm
-#' 
-#' The algorithm of auto-selecting tuning.
-#' 
-#' For more details see: 
-#' 
-#' @param y The numeric response vector (with values in (0,1)).
-#' @param x The numeric regressor matrix for mean model.
-#' @param z The numeric regressor matrix for precision model, defaulting to an intercept only.
-#' @param L A parameter of auto selecting algorithm of tuning parameter (default L=0.02).
-#' @param M A integer parameter value of auto selecting algorithm of tuning parameter (default M=3).
-#' @param tolerance The function value tolerance.
-#' 
-#' @return Return a tuning given by data driven algorithm selection
-#'
-Opt.Tuning.LMDPDE=function(y,x,z,control)
+# Auto Selecting tuning parameter algorithm
+Opt.Tuning.LMDPDE=function(y,x,z,link,link.phi,control)
 {
   #browser()
   if(missing(control)){control=robustbetareg.control()}
+  control$alpha.optimal=FALSE
   LMDPDE.list=LMDPDE.par=list()
   zq.t=NULL
   alpha_tuning=seq(0,0.5,0.02)
@@ -182,26 +104,24 @@ Opt.Tuning.LMDPDE=function(y,x,z,control)
   n=length(y)
   unstable=F
   sqv.unstable=T
+  est.log.lik=tryCatch(suppressWarnings(betareg.fit(x,y,z,link=link,link.phi = link.phi)),error=function(e) NULL)
+  Est.param=do.call("c",est.log.lik$coefficients)
   ponto.inicial.robst=ponto.inicial.temp=Initial.points(y,x,z)
-  p=length(ponto.inicial.robst)
-  if(dim(z)[2]!=1)
-  {
-    est.log.lik=tryCatch(suppressWarnings(betareg(y~x[,-1]|z[,-1])),error=function(e) NULL)
-  }else
-  {
-    est.log.lik=tryCatch(suppressWarnings(betareg(y~x[,-1]|1)),error=function(e) NULL)
-  }
-  Est.param=as.numeric(c(est.log.lik$coefficients$mean,est.log.lik$coefficients$precision))
+  names(ponto.inicial.robst)=names(ponto.inicial.temp)=names(Est.param)=c(colnames(x),colnames(z))
+  p=length(Est.param)
   for(k in 1:(M+1))
   {
-    LMDPDE.par=tryCatch(LMDPDE.Beta.Reg(y,x,z,alpha=alpha_tuning[k],alpha.optimal=F,start_theta=Est.param,control = control),error=function(e){LMDPDE.par$converged<-FALSE; return(LMDPDE.par)})
+    control$start=Est.param
+    LMDPDE.par=tryCatch(LMDPDE.Beta.Reg(y,x,z,alpha=alpha_tuning[k],link=link,link.phi=link.phi,control = control),error=function(e){LMDPDE.par$converged<-FALSE; return(LMDPDE.par)})
     if(!LMDPDE.par$converged)
     {
-      LMDPDE.par=tryCatch(LMDPDE.Beta.Reg(y,x,z,alpha=alpha_tuning[k],alpha.optimal=F,start_theta=ponto.inicial.temp,control = control),error=function(e){LMDPDE.par$converged<-FALSE; return(LMDPDE.par)})
+      control$start=ponto.inicial.temp
+      LMDPDE.par=tryCatch(LMDPDE.Beta.Reg(y,x,z,alpha=alpha_tuning[k],link=link,link.phi=link.phi,control = control),error=function(e){LMDPDE.par$converged<-FALSE; return(LMDPDE.par)})
     }
     if(!LMDPDE.par$converged)
     {
-      LMDPDE.par=tryCatch(LMDPDE.Beta.Reg(y,x,z,alpha=alpha_tuning[k],alpha.optimal=F,start_theta=ponto.inicial.robst,control = control),error=function(e){LMDPDE.par$converged<-FALSE; return(LMDPDE.par)})
+      control$start=ponto.inicial.robst
+      LMDPDE.par=tryCatch(LMDPDE.Beta.Reg(y,x,z,alpha=alpha_tuning[k],link=link,link.phi=link.phi,control = control),error=function(e){LMDPDE.par$converged<-FALSE; return(LMDPDE.par)})
     }
     if(LMDPDE.par$converged)
     {
@@ -226,14 +146,17 @@ Opt.Tuning.LMDPDE=function(y,x,z,control)
   k=k+1
   while(sqv.unstable)
   {
-    LMDPDE.par=tryCatch(LMDPDE.Beta.Reg(y,x,z,alpha=alpha_tuning[k],alpha.optimal=F,start_theta=Est.param,control = control),error=function(e){LMDPDE.par$converged<-FALSE; return(LMDPDE.par)})
+    control$start=Est.param
+    LMDPDE.par=tryCatch(LMDPDE.Beta.Reg(y,x,z,alpha=alpha_tuning[k],link=link,link.phi=link.phi,control = control),error=function(e){LMDPDE.par$converged<-FALSE; return(LMDPDE.par)})
     if(!LMDPDE.par$converged)
     {
-      LMDPDE.par=tryCatch(LMDPDE.Beta.Reg(y,x,z,alpha=alpha_tuning[k],alpha.optimal=F,start_theta=ponto.inicial.temp,control = control),error=function(e) {LMDPDE.par$converged<-FALSE; return(LMDPDE.par)})
+      control$start=ponto.inicial.temp
+      LMDPDE.par=tryCatch(LMDPDE.Beta.Reg(y,x,z,alpha=alpha_tuning[k],link=link,link.phi=link.phi,control = control),error=function(e) {LMDPDE.par$converged<-FALSE; return(LMDPDE.par)})
     }
     if(!LMDPDE.par$converged)
     {
-      LMDPDE.par=tryCatch(LMDPDE.Beta.Reg(y,x,z,alpha=alpha_tuning[k],alpha.optimal=F,start_theta=ponto.inicial.robst,control = control),error=function(e) {LMDPDE.par$converged<-FALSE; return(LMDPDE.par)})
+      control$start=ponto.inicial.robst
+      LMDPDE.par=tryCatch(LMDPDE.Beta.Reg(y,x,z,alpha=alpha_tuning[k],link=link,link.phi=link.phi,control = control),error=function(e) {LMDPDE.par$converged<-FALSE; return(LMDPDE.par)})
     }
     if(LMDPDE.par$converged)
     {
@@ -263,26 +186,14 @@ Opt.Tuning.LMDPDE=function(y,x,z,control)
   }else{
     LMDPDE.par.star=LMDPDE.list[[(k-M)]]
     LMDPDE.par.star$sqv=sqv
+    LMDPDE.par.star$Optimal.Tuning=TRUE
   }
   return(LMDPDE.par.star)
 }
 
 
-#' Sandwich Matrix - LMDPDE
-#' 
-#' Covariance matrix of LSMDPDE.
-#' 
-#' For more details see: 
-#' 
-#' @param mu The numeric mean parameter.
-#' @param phi The numeric precision parameter.
-#' @param X The numeric regressor matrix for mean model.
-#' @param Z The numeric regressor matrix for precision model, defaulting to an intercept only.
-#' @param alpha The tuning with values (0,1), for robust estimation. When alpha is equal to zero, it is equivalent to MLE. 
-#' 
-#' @return Return a tuning given by data driven algorithm selection
-#'
-LMDPDE_Cov_Matrix=function(mu,phi,X,Z,alpha)
+# Sandwich Matrix - LMDPDE
+LMDPDE_Cov_Matrix=function(mu,phi,X,Z,alpha,linkobj)
 {
   n=length(mu)
   a0=mu*phi
@@ -295,8 +206,8 @@ LMDPDE_Cov_Matrix=function(mu,phi,X,Z,alpha)
   K_alpha=exp(lbeta(a_alpha,b_alpha)-(1+alpha)*lbeta(a0,b0))
   K_2alpha=exp(lbeta(a_2alpha,b_2alpha)-(1+2*alpha)*lbeta(a0,b0))
   
-  Tb=diag((mu-mu^2))
-  Tg=diag(phi)
+  Tb=diag(inverse(linkobj$linkfun.mu$d.linkfun(mu)))
+  Tg=diag(inverse(linkobj$linkfun.phi$d.linkfun(phi)))
   
   mu_alpha_star=digamma(a_alpha)-digamma(b_alpha)
   mu_alpha_dagger=digamma(b_alpha)-digamma(a_alpha+b_alpha)
@@ -331,7 +242,8 @@ LMDPDE_Cov_Matrix=function(mu,phi,X,Z,alpha)
   
   Sigma=rbind(cbind(Sigma_beta_beta,Sigma_beta_gamma),cbind(t(Sigma_beta_gamma),Sigma_gamma_gamma))
   
-  V=n*solve(Lambda)%*%Sigma%*%t(solve(Lambda))
+  #V=n*solve(Lambda)%*%Sigma%*%t(solve(Lambda))
+  V=n*MASS::ginv(Lambda)%*%Sigma%*%t(MASS::ginv(Lambda))
   
   result=list()
   result$Lambda=Lambda
@@ -343,5 +255,21 @@ LMDPDE_Cov_Matrix=function(mu,phi,X,Z,alpha)
   return(result)
 }
 
-
+#Hat matrix
+hatvalues.robustbetareg.LMDPDE=function(object)
+{
+  mu_hat=object$fitted.values$mu.predict
+  phi_hat=object$fitted.values$phi.predict
+  y=object$y
+  X=object$model$mean
+  linkobj=make.link(link.mu=object$link,link.phi=object$link.phi)
+  d.link.mu=linkobj$linkfun.mu$d.linkfun(mu_hat)
+  
+  y_star=log(y)-log(1-y)
+  mu_star=digamma(mu_hat*phi_hat)-digamma((1-mu_hat)*phi_hat)
+  V_star=trigamma(mu_hat*phi_hat)+trigamma((1-mu_hat)*phi_hat)
+  W.PHI=diag(x=phi_hat*V_star*(inverse(d.link.mu))^2)
+  H=sqrt(W.PHI)%*%X%*%solve(t(X)%*%W.PHI%*%X)%*%t(X)%*%sqrt(W.PHI)
+  return(diag(H))
+}
 

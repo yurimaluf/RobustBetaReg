@@ -2,24 +2,29 @@
 % Please edit documentation in R/Aux-Functions.R
 \name{degbeta}
 \alias{degbeta}
+\alias{regbeta}
 \title{The EGB of the second type}
 \usage{
-degbeta(y_star, mu, phi, log)
+degbeta(y_star, mu, phi, log = FALSE)
+
+regbeta(n, mu, phi)
 }
 \arguments{
-\item{y_star}{Logit transformation of original data}
+\item{y_star}{logit transformation of original data.}
 
-\item{mu}{mu parameter}
+\item{mu}{mu parameter.}
 
-\item{phi}{phi parameter}
+\item{phi}{phi parameter.}
 
-\item{log}{LOGICAL parameter. If TRUE return the log of density function}
+\item{log}{a logical value. If TRUE return the log of density function.}
+
+\item{n}{number of observations.}
 }
 \value{
-Return value of density function.
+Return value of density function or a random sample.
 }
 \description{
-Exponential Generalized Beta (EGB) of the second type density function.
+Density and random generation for the exponential generalized beta (EGB) of the second type,
 }
 \details{
 For more details see
