@@ -612,4 +612,5 @@ cooks.distance.LMDPDE=function(object,...)
   return(h*(res^2)/(k*(1-h)^2))
 }
 
+
   

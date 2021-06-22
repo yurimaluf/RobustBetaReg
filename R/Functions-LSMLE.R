@@ -17,7 +17,6 @@ LSMLE.Beta.Reg=function(y,x,z,alpha,link,link.phi,control=robustbetareg.control(
   {
     return(Opt.Tuning.LSMLE(y,x,z,link,link.phi,control))
   }
-  browser()
   if(is.null(start_theta) || missing(alpha))
   {
     mle=tryCatch(suppressWarnings(betareg.fit(x,y,z,link=link,link.phi = link.phi)),error=function(e) NULL)
