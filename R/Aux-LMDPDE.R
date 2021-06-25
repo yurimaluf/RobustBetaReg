@@ -80,7 +80,7 @@ Robst.LMDPDE.Beta.Reg=function(y,x,z,start_theta,alpha,linkobj,tolerance,maxit)
   theta$x=rep(0,length(start_theta))
   theta$fvec=10
   theta$msg=theta$error=NULL
-  theta=tryCatch(nleqslv(start_theta,Psi_LMDPDE,y=y,X=x,Z=z,alpha=alpha,linkobj=linkobj,control=list(ftol=tolerance,maxit=maxit),jacobian=TRUE,method="Newton"),error=function(e){
+  theta=tryCatch(nleqslv(start_theta,Psi_LMDPDE,jac=Psi_LMDPDE_Jacobian,y=y,X=x,Z=z,alpha=alpha,linkobj=linkobj,control=list(ftol=tolerance,maxit=maxit),jacobian=TRUE,method="Newton"),error=function(e){
     theta$msg<-e$message
     return(theta)})
   theta$converged=F
@@ -254,6 +254,73 @@ LMDPDE_Cov_Matrix=function(mu,phi,X,Z,alpha,linkobj)
   
   return(result)
 }
+
+#Psi LMDPDE Jacobian
+Psi_LMDPDE_Jacobian=function(Theta,y,X,Z,alpha,linkobj)
+{
+  #X=as.matrix(X)
+  #Z=as.matrix(Z)
+  Beta=Theta[1:ncol(X)]
+  Gamma=Theta[1:ncol(Z)+ncol(X)]
+  q=1-alpha
+  mu_hat=linkobj$linkfun.mu$inv.link(X%*%Beta)
+  phi_hat=linkobj$linkfun.phi$inv.link(Z%*%Gamma)
+  a.0=mu_hat*phi_hat
+  b.0=(1-mu_hat)*phi_hat
+  a.alpha=a.0*(1+alpha)
+  b.alpha=b.0*(1+alpha)
+  y_dagger=log(1-y)
+  y_star=log(y)-y_dagger
+  mu_star=suppressWarnings(digamma(a.0)-digamma(b.0))
+  mu_star_alpha=suppressWarnings(digamma(a.alpha)-digamma(b.alpha))
+  mu_dagger=suppressWarnings(digamma(b.0)-digamma(phi_hat))
+  mu_alpha_dagger=digamma(b.alpha)-digamma(phi_hat*(1+alpha))
+  
+  d.linkmu=linkobj$linkfun.mu$d.linkfun(mu_hat)
+  d2.linkmu=linkobj$linkfun.mu$d2.linkfun(mu_hat)
+  d.linkphi=linkobj$linkfun.phi$d.linkfun(phi_hat)
+  d2.linkphi=linkobj$linkfun.phi$d2.linkfun(phi_hat)
+  
+  Tb=diag(inverse(d.linkmu))
+  Tg=diag(inverse(d.linkphi))
+  #browser()
+  
+  c_star=exp(lbeta(a.alpha,b.alpha)-(1+alpha)*lbeta(a.0,b.0))
+  k_mu.mu=(phi_hat^2)*c_star*((1+alpha)*((mu_star_alpha-mu_star)^2+trigamma(a.alpha)+trigamma(b.alpha))-trigamma(a.0)-trigamma(b.0))
+  k_mu=phi_hat*c_star*(mu_star_alpha-mu_star)
+  u_mu=phi_hat*(y_star-mu_star)
+  u_phi=mu_hat*(y_star-mu_star)+y_dagger-mu_dagger
+  u_mu.mu=-(phi_hat^2)*(trigamma(a.0)+trigamma(b.0))
+  f_q_star=degbeta(y_star,mu_hat,phi_hat)^(alpha)
+  
+  core1=as.numeric(f_q_star*(u_mu.mu+alpha*u_mu^2)-(k_mu.mu+(d2.linkmu/d.linkmu)*(f_q_star*u_mu-k_mu)))
+  
+  D1=mu_hat*(mu_star_alpha-mu_star)+(mu_alpha_dagger-mu_dagger)
+  dd=(1+alpha)*(D1)*(mu_star_alpha-mu_star)+((1+alpha)*(mu_hat*trigamma(a.alpha)-(1-mu_hat)*trigamma(b.alpha))-(mu_hat*trigamma(a.0)-(1-mu_hat)*trigamma(b.0)))
+  #dd=(1+alpha)*(mu_hat*(mu_star_alpha-mu_star)+(mu_alpha_dagger-mu_dagger))*(mu_star_alpha-mu_star)+((1+alpha)*(mu_hat*trigamma(a.alpha)-(1-mu_hat)*trigamma(b.alpha))-(mu_hat*trigamma(a.0)-(1-mu_hat)*trigamma(b.0)))
+  k_mu.phi=c_star*(mu_star_alpha-mu_star+phi_hat*dd)
+  u_mu.phi=(y_star-mu_star)-phi_hat*(mu_hat*trigamma(a.0)-(1-mu_hat)*trigamma(b.0))
+  
+  core2=as.numeric(f_q_star*(u_mu.phi+alpha*u_mu*u_phi)-k_mu.phi)
+  
+  nu.alpha=trigamma(a.alpha)*mu_hat^2+trigamma(b.alpha)*(1-mu_hat)^2-trigamma(phi_hat*(1+alpha))
+  nu.0=trigamma(a.0)*mu_hat^2+trigamma(b.0)*(1-mu_hat)^2-trigamma(phi_hat)
+  u_phi.phi=trigamma(phi_hat)-(trigamma(a.0)*mu_hat^2+trigamma(b.0)*(1-mu_hat)^2)
+  k_phi=c_star*(D1)
+  #k_phi=c_star*(mu_hat*(mu_star_alpha-mu_star)+mu_alpha_dagger-mu_dagger)
+  
+  k_phi.phi=c_star*((1+alpha)*((mu_hat*(mu_star_alpha-mu_star)+mu_alpha_dagger-mu_dagger)^2+nu.alpha)-nu.0)
+  
+  core3=as.numeric(f_q_star*(u_phi.phi+alpha*u_phi^2)-(d2.linkphi/d.linkphi)*(u_phi*f_q_star-k_phi)-k_phi.phi)
+  
+  J11=t(X)%*%Tb%*%diag(core1)%*%Tb%*%X
+  J12=J21=t(X)%*%Tb%*%diag(core2)%*%Tg%*%Z
+  J22=t(Z)%*%Tg%*%diag(core3)%*%Tg%*%Z
+  
+  J=rbind(cbind(J11,J12),cbind(t(J21),J22))
+  return(J)
+}
+
 
 #Hat matrix
 hatvalues.robustbetareg.LMDPDE=function(object)

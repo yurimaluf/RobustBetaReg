@@ -525,7 +525,7 @@ make.link=function(link.mu,link.phi)
     d2.linkfun=function(mu)
     {
       mu=pmax(pmin(mu,1-.Machine$double.eps),.Machine$double.eps)
-      return((mu*(1-mu)*(1-2*mu))^(-1))
+      return((2*mu-1)/(mu*(1-mu))^2)
     }
     inv.link=function(eta)
     {
@@ -690,5 +690,8 @@ make.link=function(link.mu,link.phi)
   return(linkobj)
 }
 
-#
-soma=function(x1,x2){x1+x2}
+#' @export
+soma=function(x1,x2)
+{
+  times4(x1+x2)
+}

@@ -70,9 +70,14 @@ Robst.LSMLE.Beta.Reg=function(y,x,z,start_theta,alpha,linkobj,tolerance,maxit)
   theta$x=rep(0,length(start_theta))
   theta$fvec=10
   theta$msg=NULL
-  theta=tryCatch(nleqslv(start_theta,Psi_LSMLE,y=y,X=x,Z=z,alpha=alpha,linkobj=linkobj,control=list(ftol=tolerance,maxit=maxit),jacobian=TRUE,method="Newton"),error=function(e){
-    theta$msg<-e$message
-    return(theta)})
+  #browser()
+  # theta=tryCatch(nleqslv(start_theta,Psi_LSMLE,jac=Psi_LSMLE_Jacobian,y=y,X=x,Z=z,alpha=alpha,linkobj=linkobj,control=list(ftol=tolerance,maxit=maxit),jacobian=TRUE,method="Newton"),error=function(e){
+  #   theta$msg<-e$message
+  #   return(theta)})
+  theta=tryCatch(nleqslv(start_theta,Psi_LSMLE,jac=Psi_LSMLE_Jacobian,y=y,X=x,Z=z,alpha=alpha,linkobj=linkobj,control=list(ftol=tolerance,maxit=maxit),jacobian=TRUE,method="Newton"),error=function(e){
+   theta$msg<-e$message
+   return(theta)})
+  
   theta$converged=F
   if(all(abs(theta$fvec)<tolerance) & !all(theta$fvec==0)){theta$converged=T}
   
@@ -248,6 +253,56 @@ LSMLE_Cov_Matrix=function(mu,phi,X,Z,alpha,linkobj)
   
   return(result)
 }
+
+#Psi_LSMLE Jacobian
+Psi_LSMLE_Jacobian=function(Theta,y,X,Z,alpha,linkobj)
+{
+  X=as.matrix(X)
+  Z=as.matrix(Z)
+  Beta=Theta[1:ncol(X)]
+  Gamma=Theta[1:ncol(Z)+ncol(X)]
+  q=1-alpha
+  mu_hat=linkobj$linkfun.mu$inv.link(X%*%Beta)
+  phi_hat=linkobj$linkfun.phi$inv.link(Z%*%Gamma)
+  phi_q=phi_hat/q
+  a.q=mu_hat*phi_q
+  b.q=(1-mu_hat)*phi_q
+  y_star=log(y)-log(1-y)
+  y_dagger=log(1-y)
+  mu_star=suppressWarnings(digamma(a.q)-digamma(b.q))
+  mu_dagger=suppressWarnings(digamma(b.q)-digamma(phi_q))
+  
+  d.linkmu=linkobj$linkfun.mu$d.linkfun(mu_hat)
+  d2.linkmu=linkobj$linkfun.mu$d2.linkfun(mu_hat)
+  d.linkphi=linkobj$linkfun.phi$d.linkfun(phi_hat)
+  d2.linkphi=linkobj$linkfun.phi$d2.linkfun(phi_hat)
+  
+  Tb=diag(inverse(d.linkmu))
+  Tg=diag(inverse(d.linkphi))
+  #browser()
+  
+  u_mu.mu=-(phi_q)^2*(trigamma(a.q)+trigamma(b.q))
+  
+  u_mu.phi=((y_star-mu_star)-phi_q*(mu_hat*trigamma(a.q)-(1-mu_hat)*trigamma(b.q)))/q
+  u_mu=phi_q*(y_star-mu_star)
+  u_phi.phi=(trigamma(phi_q)-trigamma(a.q)*mu_hat^2-trigamma(b.q)*(1-mu_hat)^2)/(q^2)
+  u_phi=(mu_hat*(y_star-mu_star)+y_dagger-mu_dagger)/q
+  f_q_star=degbeta(y_star,mu_hat,phi_q)^(alpha)
+  
+  #core1=as.numeric(f_q_star*(((1-2*mu_hat)/(mu_hat-mu_hat^2))*u_mu+u_mu.mu+alpha*u_mu^2))
+  core1=as.numeric(f_q_star*(-(d2.linkmu/d.linkmu)*u_mu+u_mu.mu+alpha*u_mu^2))
+  core2=as.numeric(f_q_star*(u_mu.phi+alpha*u_mu*u_phi))
+  core3=as.numeric(f_q_star*(-(d2.linkphi/d.linkphi)*u_phi+u_phi.phi+alpha*u_phi^2))
+  
+  J11=t(X)%*%Tb%*%diag(core1)%*%Tb%*%X
+  J12=J21=t(X)%*%Tb%*%diag(core2)%*%Tg%*%Z
+  J22=t(Z)%*%Tg%*%diag(core3)%*%Tg%*%Z
+  
+  J=rbind(cbind(J11,J12),cbind(t(J21),J22))
+  return(J)
+}
+
+
 
 #Hat matrix
 hatvalues.robustbetareg.LSMLE=function(object)
