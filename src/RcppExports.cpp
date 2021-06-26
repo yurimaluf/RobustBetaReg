@@ -6,94 +6,118 @@
 
 using namespace Rcpp;
 
-// rcpp_hello_world
-List rcpp_hello_world();
-RcppExport SEXP _RobustBetaReg_rcpp_hello_world() {
+// Psi_LSMLE_Cpp
+arma::mat Psi_LSMLE_Cpp(arma::vec Theta, NumericVector y, arma::mat X, arma::mat Z, double alpha, StringVector link_mu, StringVector link_phi);
+RcppExport SEXP _RobustBetaReg_Psi_LSMLE_Cpp(SEXP ThetaSEXP, SEXP ySEXP, SEXP XSEXP, SEXP ZSEXP, SEXP alphaSEXP, SEXP link_muSEXP, SEXP link_phiSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    rcpp_result_gen = Rcpp::wrap(rcpp_hello_world());
+    Rcpp::traits::input_parameter< arma::vec >::type Theta(ThetaSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type y(ySEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type X(XSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type Z(ZSEXP);
+    Rcpp::traits::input_parameter< double >::type alpha(alphaSEXP);
+    Rcpp::traits::input_parameter< StringVector >::type link_mu(link_muSEXP);
+    Rcpp::traits::input_parameter< StringVector >::type link_phi(link_phiSEXP);
+    rcpp_result_gen = Rcpp::wrap(Psi_LSMLE_Cpp(Theta, y, X, Z, alpha, link_mu, link_phi));
     return rcpp_result_gen;
 END_RCPP
 }
-// timesTwo
-int timesTwo(int x);
-RcppExport SEXP _RobustBetaReg_timesTwo(SEXP xSEXP) {
+// Psi_LSMLE_Jacobian_C
+arma::mat Psi_LSMLE_Jacobian_C(arma::vec Theta, NumericVector y, arma::mat X, arma::mat Z, double alpha, StringVector link_mu, StringVector link_phi);
+RcppExport SEXP _RobustBetaReg_Psi_LSMLE_Jacobian_C(SEXP ThetaSEXP, SEXP ySEXP, SEXP XSEXP, SEXP ZSEXP, SEXP alphaSEXP, SEXP link_muSEXP, SEXP link_phiSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< int >::type x(xSEXP);
-    rcpp_result_gen = Rcpp::wrap(timesTwo(x));
+    Rcpp::traits::input_parameter< arma::vec >::type Theta(ThetaSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type y(ySEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type X(XSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type Z(ZSEXP);
+    Rcpp::traits::input_parameter< double >::type alpha(alphaSEXP);
+    Rcpp::traits::input_parameter< StringVector >::type link_mu(link_muSEXP);
+    Rcpp::traits::input_parameter< StringVector >::type link_phi(link_phiSEXP);
+    rcpp_result_gen = Rcpp::wrap(Psi_LSMLE_Jacobian_C(Theta, y, X, Z, alpha, link_mu, link_phi));
     return rcpp_result_gen;
 END_RCPP
 }
-// times4
-int times4(int x);
-RcppExport SEXP _RobustBetaReg_times4(SEXP xSEXP) {
+// Psi_LMDPDE_Beta_Cpp
+arma::mat Psi_LMDPDE_Beta_Cpp(NumericVector mu_hat, NumericVector phi_hat, NumericVector y, arma::mat X, arma::mat Z, double alpha, StringVector link_mu, StringVector link_phi);
+RcppExport SEXP _RobustBetaReg_Psi_LMDPDE_Beta_Cpp(SEXP mu_hatSEXP, SEXP phi_hatSEXP, SEXP ySEXP, SEXP XSEXP, SEXP ZSEXP, SEXP alphaSEXP, SEXP link_muSEXP, SEXP link_phiSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< int >::type x(xSEXP);
-    rcpp_result_gen = Rcpp::wrap(times4(x));
+    Rcpp::traits::input_parameter< NumericVector >::type mu_hat(mu_hatSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type phi_hat(phi_hatSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type y(ySEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type X(XSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type Z(ZSEXP);
+    Rcpp::traits::input_parameter< double >::type alpha(alphaSEXP);
+    Rcpp::traits::input_parameter< StringVector >::type link_mu(link_muSEXP);
+    Rcpp::traits::input_parameter< StringVector >::type link_phi(link_phiSEXP);
+    rcpp_result_gen = Rcpp::wrap(Psi_LMDPDE_Beta_Cpp(mu_hat, phi_hat, y, X, Z, alpha, link_mu, link_phi));
     return rcpp_result_gen;
 END_RCPP
 }
-// a19
-arma::mat a19(arma::mat x);
-RcppExport SEXP _RobustBetaReg_a19(SEXP xSEXP) {
+// Psi_LMDPDE_Gamma_Cpp
+arma::mat Psi_LMDPDE_Gamma_Cpp(NumericVector mu_hat, NumericVector phi_hat, NumericVector y, arma::mat X, arma::mat Z, double alpha, StringVector link_mu, StringVector link_phi);
+RcppExport SEXP _RobustBetaReg_Psi_LMDPDE_Gamma_Cpp(SEXP mu_hatSEXP, SEXP phi_hatSEXP, SEXP ySEXP, SEXP XSEXP, SEXP ZSEXP, SEXP alphaSEXP, SEXP link_muSEXP, SEXP link_phiSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< arma::mat >::type x(xSEXP);
-    rcpp_result_gen = Rcpp::wrap(a19(x));
+    Rcpp::traits::input_parameter< NumericVector >::type mu_hat(mu_hatSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type phi_hat(phi_hatSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type y(ySEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type X(XSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type Z(ZSEXP);
+    Rcpp::traits::input_parameter< double >::type alpha(alphaSEXP);
+    Rcpp::traits::input_parameter< StringVector >::type link_mu(link_muSEXP);
+    Rcpp::traits::input_parameter< StringVector >::type link_phi(link_phiSEXP);
+    rcpp_result_gen = Rcpp::wrap(Psi_LMDPDE_Gamma_Cpp(mu_hat, phi_hat, y, X, Z, alpha, link_mu, link_phi));
     return rcpp_result_gen;
 END_RCPP
 }
-// a20
-arma::mat a20(arma::mat x);
-RcppExport SEXP _RobustBetaReg_a20(SEXP xSEXP) {
+// Psi_LMDPDE_Cpp
+arma::mat Psi_LMDPDE_Cpp(arma::vec Theta, NumericVector y, arma::mat X, arma::mat Z, double alpha, StringVector link_mu, StringVector link_phi);
+RcppExport SEXP _RobustBetaReg_Psi_LMDPDE_Cpp(SEXP ThetaSEXP, SEXP ySEXP, SEXP XSEXP, SEXP ZSEXP, SEXP alphaSEXP, SEXP link_muSEXP, SEXP link_phiSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< arma::mat >::type x(xSEXP);
-    rcpp_result_gen = Rcpp::wrap(a20(x));
+    Rcpp::traits::input_parameter< arma::vec >::type Theta(ThetaSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type y(ySEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type X(XSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type Z(ZSEXP);
+    Rcpp::traits::input_parameter< double >::type alpha(alphaSEXP);
+    Rcpp::traits::input_parameter< StringVector >::type link_mu(link_muSEXP);
+    Rcpp::traits::input_parameter< StringVector >::type link_phi(link_phiSEXP);
+    rcpp_result_gen = Rcpp::wrap(Psi_LMDPDE_Cpp(Theta, y, X, Z, alpha, link_mu, link_phi));
     return rcpp_result_gen;
 END_RCPP
 }
-// eta
-NumericVector eta(arma::mat x, arma::mat theta);
-RcppExport SEXP _RobustBetaReg_eta(SEXP xSEXP, SEXP thetaSEXP) {
+// Psi_LMDPDE_Jacobian_C
+arma::mat Psi_LMDPDE_Jacobian_C(arma::vec Theta, NumericVector y, arma::mat X, arma::mat Z, double alpha, StringVector link_mu, StringVector link_phi);
+RcppExport SEXP _RobustBetaReg_Psi_LMDPDE_Jacobian_C(SEXP ThetaSEXP, SEXP ySEXP, SEXP XSEXP, SEXP ZSEXP, SEXP alphaSEXP, SEXP link_muSEXP, SEXP link_phiSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< arma::mat >::type x(xSEXP);
-    Rcpp::traits::input_parameter< arma::mat >::type theta(thetaSEXP);
-    rcpp_result_gen = Rcpp::wrap(eta(x, theta));
-    return rcpp_result_gen;
-END_RCPP
-}
-// degbeta_C
-NumericVector degbeta_C(NumericVector y_star, NumericVector mu, NumericVector phi);
-RcppExport SEXP _RobustBetaReg_degbeta_C(SEXP y_starSEXP, SEXP muSEXP, SEXP phiSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< NumericVector >::type y_star(y_starSEXP);
-    Rcpp::traits::input_parameter< NumericVector >::type mu(muSEXP);
-    Rcpp::traits::input_parameter< NumericVector >::type phi(phiSEXP);
-    rcpp_result_gen = Rcpp::wrap(degbeta_C(y_star, mu, phi));
+    Rcpp::traits::input_parameter< arma::vec >::type Theta(ThetaSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type y(ySEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type X(XSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type Z(ZSEXP);
+    Rcpp::traits::input_parameter< double >::type alpha(alphaSEXP);
+    Rcpp::traits::input_parameter< StringVector >::type link_mu(link_muSEXP);
+    Rcpp::traits::input_parameter< StringVector >::type link_phi(link_phiSEXP);
+    rcpp_result_gen = Rcpp::wrap(Psi_LMDPDE_Jacobian_C(Theta, y, X, Z, alpha, link_mu, link_phi));
     return rcpp_result_gen;
 END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_RobustBetaReg_rcpp_hello_world", (DL_FUNC) &_RobustBetaReg_rcpp_hello_world, 0},
-    {"_RobustBetaReg_timesTwo", (DL_FUNC) &_RobustBetaReg_timesTwo, 1},
-    {"_RobustBetaReg_times4", (DL_FUNC) &_RobustBetaReg_times4, 1},
-    {"_RobustBetaReg_a19", (DL_FUNC) &_RobustBetaReg_a19, 1},
-    {"_RobustBetaReg_a20", (DL_FUNC) &_RobustBetaReg_a20, 1},
-    {"_RobustBetaReg_eta", (DL_FUNC) &_RobustBetaReg_eta, 2},
-    {"_RobustBetaReg_degbeta_C", (DL_FUNC) &_RobustBetaReg_degbeta_C, 3},
+    {"_RobustBetaReg_Psi_LSMLE_Cpp", (DL_FUNC) &_RobustBetaReg_Psi_LSMLE_Cpp, 7},
+    {"_RobustBetaReg_Psi_LSMLE_Jacobian_C", (DL_FUNC) &_RobustBetaReg_Psi_LSMLE_Jacobian_C, 7},
+    {"_RobustBetaReg_Psi_LMDPDE_Beta_Cpp", (DL_FUNC) &_RobustBetaReg_Psi_LMDPDE_Beta_Cpp, 8},
+    {"_RobustBetaReg_Psi_LMDPDE_Gamma_Cpp", (DL_FUNC) &_RobustBetaReg_Psi_LMDPDE_Gamma_Cpp, 8},
+    {"_RobustBetaReg_Psi_LMDPDE_Cpp", (DL_FUNC) &_RobustBetaReg_Psi_LMDPDE_Cpp, 7},
+    {"_RobustBetaReg_Psi_LMDPDE_Jacobian_C", (DL_FUNC) &_RobustBetaReg_Psi_LMDPDE_Jacobian_C, 7},
     {NULL, NULL, 0}
 };
 

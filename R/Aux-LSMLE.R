@@ -61,20 +61,18 @@ Psi_LSMLE=function(Theta,y,X,Z,alpha,linkobj)
 Robst.LSMLE.Beta.Reg=function(y,x,z,start_theta,alpha,linkobj,tolerance,maxit)
 {
   theta=list()
+  link.mu=attributes(linkobj)$name.link.mu
+  link.phi=attributes(linkobj)$name.link.phi
   if(missing(tolerance)){tolerance=1e-3}
   if(missing(maxit)){maxit=150}
   if(missing(start_theta)){
-    mle=tryCatch(suppressWarnings(betareg.fit(x,y,z,link=attributes(linkobj)$name.link.mu,link.phi=attributes(linkobj)$name.link.phi)),error=function(e) NULL)
+    mle=tryCatch(suppressWarnings(betareg.fit(x,y,z,link=link.mu,link.phi=link.phi)),error=function(e) NULL)
     start_theta=as.numeric(do.call("c",mle$coefficients))
   }
   theta$x=rep(0,length(start_theta))
   theta$fvec=10
   theta$msg=NULL
-  #browser()
-  # theta=tryCatch(nleqslv(start_theta,Psi_LSMLE,jac=Psi_LSMLE_Jacobian,y=y,X=x,Z=z,alpha=alpha,linkobj=linkobj,control=list(ftol=tolerance,maxit=maxit),jacobian=TRUE,method="Newton"),error=function(e){
-  #   theta$msg<-e$message
-  #   return(theta)})
-  theta=tryCatch(nleqslv(start_theta,Psi_LSMLE,jac=Psi_LSMLE_Jacobian,y=y,X=x,Z=z,alpha=alpha,linkobj=linkobj,control=list(ftol=tolerance,maxit=maxit),jacobian=TRUE,method="Newton"),error=function(e){
+  theta=tryCatch(nleqslv(start_theta,Psi_LSMLE_Cpp,jac=Psi_LSMLE_Jacobian_C,y=y,X=x,Z=z,alpha=alpha,link_mu=link.mu,link_phi=link.phi,control=list(ftol=tolerance,maxit=maxit),jacobian=TRUE,method="Newton"),error=function(e){
    theta$msg<-e$message
    return(theta)})
   
@@ -255,6 +253,7 @@ LSMLE_Cov_Matrix=function(mu,phi,X,Z,alpha,linkobj)
 }
 
 #Psi_LSMLE Jacobian
+#' @export
 Psi_LSMLE_Jacobian=function(Theta,y,X,Z,alpha,linkobj)
 {
   X=as.matrix(X)
@@ -282,7 +281,6 @@ Psi_LSMLE_Jacobian=function(Theta,y,X,Z,alpha,linkobj)
   #browser()
   
   u_mu.mu=-(phi_q)^2*(trigamma(a.q)+trigamma(b.q))
-  
   u_mu.phi=((y_star-mu_star)-phi_q*(mu_hat*trigamma(a.q)-(1-mu_hat)*trigamma(b.q)))/q
   u_mu=phi_q*(y_star-mu_star)
   u_phi.phi=(trigamma(phi_q)-trigamma(a.q)*mu_hat^2-trigamma(b.q)*(1-mu_hat)^2)/(q^2)

@@ -70,17 +70,19 @@ Psi_LMDPDE=function(Theta,y,X,Z,alpha,linkobj)
 Robst.LMDPDE.Beta.Reg=function(y,x,z,start_theta,alpha,linkobj,tolerance,maxit)
 {
   theta=list()
+  link.mu=attributes(linkobj)$name.link.mu
+  link.phi=attributes(linkobj)$name.link.phi
   if(missing(tolerance)){tolerance=1e-3}
   if(missing(maxit)){maxit=150}
   if(missing(start_theta))
   {
-    mle=tryCatch(suppressWarnings(betareg.fit(x,y,z,link=attributes(linkobj)$name.link.mu,link.phi=attributes(linkobj)$name.link.phi)),error=function(e) NULL)
+    mle=tryCatch(suppressWarnings(betareg.fit(x,y,z,link=link.mu,link.phi=link.phi)),error=function(e) NULL)
     start_theta=as.numeric(do.call("c",mle$coefficients))
   }
   theta$x=rep(0,length(start_theta))
   theta$fvec=10
   theta$msg=theta$error=NULL
-  theta=tryCatch(nleqslv(start_theta,Psi_LMDPDE,jac=Psi_LMDPDE_Jacobian,y=y,X=x,Z=z,alpha=alpha,linkobj=linkobj,control=list(ftol=tolerance,maxit=maxit),jacobian=TRUE,method="Newton"),error=function(e){
+  theta=tryCatch(nleqslv(start_theta,Psi_LMDPDE_Cpp,jac=Psi_LMDPDE_Jacobian_C,y=y,X=x,Z=z,alpha=alpha,link_mu=link.mu,link_phi=link.phi,control=list(ftol=tolerance,maxit=maxit),jacobian=TRUE,method="Newton"),error=function(e){
     theta$msg<-e$message
     return(theta)})
   theta$converged=F

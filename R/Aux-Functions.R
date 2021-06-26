@@ -7,7 +7,7 @@
 #' @param formula symbolic description of the model (of type y ~ x or y ~ x | z).
 #' @param data arguments controlling formula.
 #' @param alpha the tuning with values (0,1), for robust estimation. When alpha is equal to zero is equivalent of MLE. 
-#' @param type character specification of the type of estimator. Currently, LMDPDE (default) and LSMLE.
+#' @param type character specification of the type of estimator. Currently,LSMLE (default) and LMDPDE.
 #' @param control a list of control arguments specified via \code{\link[=robustbetareg.control]{robustbetareg.control}}. 
 #' 
 #' @return Return a list of components:
@@ -25,7 +25,7 @@
 #' }
 #'
 #' @export  
-robustbetareg = function(formula,data,alpha,type=c("LMDPDE","LSMLE"),link = c("logit", "probit", "cloglog", "cauchit", "loglog"),
+robustbetareg = function(formula,data,alpha,type=c("LSMLE","LMDPDE"),link = c("logit", "probit", "cloglog", "cauchit", "loglog"),
 link.phi = NULL,control=robustbetareg.control(...), ...)
 {
   cl = match.call()
