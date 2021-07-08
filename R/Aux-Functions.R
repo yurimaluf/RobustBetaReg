@@ -7,7 +7,7 @@
 #' @param formula symbolic description of the model (of type y ~ x or y ~ x | z).
 #' @param data arguments controlling formula.
 #' @param alpha the tuning with values (0,1), for robust estimation. When alpha is equal to zero is equivalent of MLE. 
-#' @param type character specification of the type of estimator. Currently,LSMLE (default) and LMDPDE.
+#' @param type character specification of the type of estimator. Currently, LSMLE (default) and LMDPDE.
 #' @param control a list of control arguments specified via \code{\link[=robustbetareg.control]{robustbetareg.control}}. 
 #' 
 #' @return Return a list of components:
@@ -483,10 +483,10 @@ WaldTypeTest=function(object,FUN,...)
 }
 
 
-#' @export
-hatvalues.robustbetareg=function(object)
+#'
+hatvalues=function(object)
 {
-  UseMethod("hatvalues.robustbetareg")
+  UseMethod("hatvalues")
 }
 
 
@@ -496,7 +496,7 @@ inverse=function(x)
   return(x^(-1))
 }
 
-#'
+#' @noRd
 ddnorm=function(x)
 {
   #-(EQL::hermite(x,1))*exp(-x^(2)/2)/sqrt(2*pi)
@@ -586,7 +586,7 @@ make.link=function(link.mu,link.phi)
     d.linkfun=function(mu)
     {
       mu=pmax(pmin(mu,1-.Machine$double.eps),.Machine$double.eps)
-      return(pi*sec(pi*(mu-0.5))^2)
+      return(pi*pracma::sec(pi*(mu-0.5))^2)
     }
     d2.linkfun=function(mu)
     {
@@ -694,4 +694,10 @@ make.link=function(link.mu,link.phi)
 soma=function(x1,x2)
 {
   times4(x1+x2)
+}
+
+#' @export
+soma2=function(x1,x2)
+{
+  times3(x1+x2)
 }

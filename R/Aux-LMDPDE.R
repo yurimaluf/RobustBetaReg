@@ -82,11 +82,20 @@ Robst.LMDPDE.Beta.Reg=function(y,x,z,start_theta,alpha,linkobj,tolerance,maxit)
   theta$x=rep(0,length(start_theta))
   theta$fvec=10
   theta$msg=theta$error=NULL
-  theta=tryCatch(nleqslv(start_theta,Psi_LMDPDE_Cpp,jac=Psi_LMDPDE_Jacobian_C,y=y,X=x,Z=z,alpha=alpha,link_mu=link.mu,link_phi=link.phi,control=list(ftol=tolerance,maxit=maxit),jacobian=TRUE,method="Newton"),error=function(e){
+  theta=tryCatch(nleqslv(start_theta,Psi_LMDPDE_Cpp,jac=Psi_LMDPDE_Jacobian_C,y=y,X=x,Z=z,alpha=alpha,link_mu=link.mu,link_phi=link.phi,control=list(ftol=tolerance,maxit=maxit),method="Newton"),error=function(e){
     theta$msg<-e$message
     return(theta)})
   theta$converged=F
   if(all(abs(theta$fvec)<tolerance) & !all(theta$fvec==0)){theta$converged=T}
+  return(theta)
+}
+
+#' @export
+Newton.Raphson_LMDPDE_Cpp=function(y,x,z,start_theta,alpha,linkobj,tolerance,maxit)
+{
+  link.mu=attributes(linkobj)$name.link.mu
+  link.phi=attributes(linkobj)$name.link.phi
+  theta=Newton_LMDPDE_C(start_theta, y, x, z, alpha, link.mu,link.phi)
   return(theta)
 }
 
@@ -325,7 +334,7 @@ Psi_LMDPDE_Jacobian=function(Theta,y,X,Z,alpha,linkobj)
 
 
 #Hat matrix
-hatvalues.robustbetareg.LMDPDE=function(object)
+hatvalues.LMDPDE=function(object)
 {
   mu_hat=object$fitted.values$mu.predict
   phi_hat=object$fitted.values$phi.predict

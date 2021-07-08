@@ -56,6 +56,7 @@ void Link::setLinkPhi( Rcpp::StringVector Nome)
 
 NumericVector Link::linkmu(NumericVector mu)
 {
+  mu=pmax(pmin(mu,1-2.22e-16),2.22e-16);
   if(LinkMu[0]=="logit")
   {
     return(log(mu)-log(1-mu));
@@ -81,6 +82,7 @@ NumericVector Link::linkmu(NumericVector mu)
 
 NumericVector Link::d_linkmu(NumericVector mu)
 {
+  mu=pmax(pmin(mu,1-2.22e-16),2.22e-16);
   if(LinkMu[0]=="logit")
   {
     return(pow(mu*(1-mu),-1));
@@ -106,6 +108,7 @@ NumericVector Link::d_linkmu(NumericVector mu)
 
 NumericVector Link::d2_linkmu(NumericVector mu)
 {
+  mu=pmax(pmin(mu,1-2.22e-16),2.22e-16);
   if(LinkMu[0]=="logit")
   {
     return((2*mu-1)/(pow(mu*(1-mu),2)));
@@ -133,23 +136,24 @@ NumericVector Link::inv_linkmu(NumericVector eta)
 {
   if(LinkMu[0]=="logit")
   {
-    return(exp(eta-log1p(exp(eta))));
+    return(pmax(pmin(exp(eta-log1p(exp(eta))),1-2.22e-16),2.22e-16));
+    //return(exp(eta-log1p(exp(eta))));
   }
   if(LinkMu[0]=="probit")
   {
-    return(Rcpp::pnorm(eta,0,1,true,false));
+    return(pmax(pmin(Rcpp::pnorm(eta,0,1,true,false),1-2.22e-16),2.22e-16));
   }
   if(LinkMu[0]=="cloglog")
   {
-    return(1-exp(-exp(-eta)));
+    return(pmax(pmin(1-exp(-exp(-eta)),1-2.22e-16),2.22e-16));
   }
   if(LinkMu[0]=="cauchit")
   {
-    return(0.5+atan(eta)/pi);
+    return(pmax(pmin(0.5+atan(eta)/pi,1-2.22e-16),2.22e-16));
   }
   if(LinkMu[0]=="loglog")
   {
-    return(exp(-exp(-eta)));
+    return(pmax(pmin(exp(-exp(-eta)),1-2.22e-16),2.22e-16));
   }
   return(0);
 }

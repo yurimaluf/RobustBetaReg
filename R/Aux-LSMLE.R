@@ -72,10 +72,10 @@ Robst.LSMLE.Beta.Reg=function(y,x,z,start_theta,alpha,linkobj,tolerance,maxit)
   theta$x=rep(0,length(start_theta))
   theta$fvec=10
   theta$msg=NULL
-  theta=tryCatch(nleqslv(start_theta,Psi_LSMLE_Cpp,jac=Psi_LSMLE_Jacobian_C,y=y,X=x,Z=z,alpha=alpha,link_mu=link.mu,link_phi=link.phi,control=list(ftol=tolerance,maxit=maxit),jacobian=TRUE,method="Newton"),error=function(e){
+  #browser()
+  theta=tryCatch(nleqslv(start_theta,Psi_LSMLE_Cpp,jac=Psi_LSMLE_Jacobian_C,y=y,X=x,Z=z,alpha=alpha,link_mu=link.mu,link_phi=link.phi,control=list(ftol=tolerance,maxit=maxit),method="Newton"),error=function(e){
    theta$msg<-e$message
    return(theta)})
-  
   theta$converged=F
   if(all(abs(theta$fvec)<tolerance) & !all(theta$fvec==0)){theta$converged=T}
   
@@ -97,7 +97,6 @@ Opt.Tuning.LSMLE=function(y,x,z,link,link.phi,control)
   unstable=F
   sqv.unstable=T
   est.log.lik=tryCatch(suppressWarnings(betareg.fit(x,y,z,link=link,link.phi = link.phi)),error=function(e) NULL)
-  #browser()
   #Est.param=c(est.log.lik$coefficients$mean,est.log.lik$coefficients$precision)
   Est.param=do.call("c",est.log.lik$coefficients)
   ponto.inicial.robst=ponto.inicial.temp=Initial.points(y,x,z)
@@ -138,6 +137,7 @@ Opt.Tuning.LSMLE=function(y,x,z,link,link.phi,control)
     rm(LSMLE.list)
     return(LSMLE.par.star)
   }
+  #browser()
   k=k+1
   while(sqv.unstable)
   {
@@ -253,7 +253,6 @@ LSMLE_Cov_Matrix=function(mu,phi,X,Z,alpha,linkobj)
 }
 
 #Psi_LSMLE Jacobian
-#' @export
 Psi_LSMLE_Jacobian=function(Theta,y,X,Z,alpha,linkobj)
 {
   X=as.matrix(X)
@@ -303,7 +302,7 @@ Psi_LSMLE_Jacobian=function(Theta,y,X,Z,alpha,linkobj)
 
 
 #Hat matrix
-hatvalues.robustbetareg.LSMLE=function(object)
+hatvalues.LSMLE=function(object)
 {
   mu_hat=object$fitted.values$mu.predict
   phi_hat=object$fitted.values$phi.predict

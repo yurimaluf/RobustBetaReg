@@ -31,7 +31,8 @@ LSMLE.Beta.Reg=function(y,x,z,alpha,link,link.phi,control=robustbetareg.control(
     beta=theta$x[1:k]
     gamma=theta$x[seq.int(length.out = m) + k]
     coefficients = list(mean = beta, precision = gamma)
-    mu_hat=linkobj$linkfun.mu$inv.link(x%*%beta)
+    eta=x%*%beta
+    mu_hat=linkobj$linkfun.mu$inv.link(eta)
     phi_hat=linkobj$linkfun.phi$inv.link(z%*%gamma)
     theta$inter=NULL
     theta$converged=mle$converged
@@ -42,18 +43,12 @@ LSMLE.Beta.Reg=function(y,x,z,alpha,link,link.phi,control=robustbetareg.control(
     #Point Estimation
     q=1-alpha
     theta=Robst.LSMLE.Beta.Reg(y,x,z,start_theta=start_theta,alpha=alpha,linkobj=linkobj,tolerance=control$tolerance,maxit=control$maxit)
-    # if(!theta$converged)
-    # {
-    #   initial.point.rbst=Initial.points(y,x,z)
-    #   initial.point.rbst<<-initial.point.rbst
-    #   theta=Robst.LSMLE.Beta.Reg(y,x,z,start_theta=initial.point.rbst,alpha=alpha,linkobj=linkobj,tolerance=control$tolerance,maxit=control$maxit)
-    #   initial.point=initial.point.rbst
-    # }
     #Predict values
     beta=theta$x[1:k]
     gamma=theta$x[seq.int(length.out = m) + k]
     coefficients = list(mean = beta, precision = gamma)
-    mu_hat=linkobj$linkfun.mu$inv.link(x%*%beta)
+    eta=x%*%beta
+    mu_hat=linkobj$linkfun.mu$inv.link(eta)
     phi_hat=linkobj$linkfun.phi$inv.link(z%*%gamma)
     #Expected Standard Error
     M.LSMLE=LSMLE_Cov_Matrix(mu_hat,phi_hat,x,z,alpha=alpha,linkobj=linkobj)
@@ -66,6 +61,8 @@ LSMLE.Beta.Reg=function(y,x,z,alpha,link,link.phi,control=robustbetareg.control(
   str1=str2=NULL
   result$coefficients=coefficients
   result$vcov=vcov
+  pseudor2 <- if (var(eta) * var(qlogis(y)) <= 0){NA}
+  else{cor(eta, linkobj$linkfun.mu$linkfun(y))^2}
   if(!is.null(theta$iter)){result$iter=theta$iter}
   result$converged=(theta$converged & all(!is.na(std.error.LSMLE)))
   if(m==1){phi_predict=phi_hat[1]}
@@ -81,6 +78,7 @@ LSMLE.Beta.Reg=function(y,x,z,alpha,link,link.phi,control=robustbetareg.control(
   result$link=link
   result$link.phi=link.phi
   result$Optimal.Tuning=alpha.optimal
+  result$pseudo.r.squared=pseudor2
   result$control=control
   if(any(is.na(std.error.LSMLE)))
   {
@@ -194,11 +192,12 @@ WaldTypeTest.LSMLE=function(object,FUN,...)
 
 
 #' @export  
-plotenvelope.LSMLE=function(robustbetareg.obj,type=c("sweighted2","pearson","weighted","sweighted","sweighted.gamma","sweighted2.gamma","combined","combined.projection"),conf=0.95,n.sim=50,control=robustbetareg.control(...), ...)
+plotenvelope.LSMLE=function(robustbetareg.obj,type=c("sweighted2","pearson","weighted","sweighted","sweighted.gamma","sweighted2.gamma","combined","combined.projection"),conf=0.95,n.sim=50,PrgBar=T,control=robustbetareg.control(...), ...)
 {
   if(missing(control)){control=robustbetareg.control(robustbetareg.obj)}
   type = match.arg(type)
   ylim.boolean=hasArg(ylim)
+  arg=list(...)
   limit=FALSE
   y.sim=ResEnvelop=NULL
   link=robustbetareg.obj$link
@@ -211,7 +210,7 @@ plotenvelope.LSMLE=function(robustbetareg.obj,type=c("sweighted2","pearson","wei
   b=(1-robustbetareg.obj$fitted.values$mu.predict)*robustbetareg.obj$fitted.values$phi.predict
   residual=residuals(robustbetareg.obj,type=type)
   k=1
-  pb = txtProgressBar(min = 0, max = n.sim, style = 3)
+  if(PrgBar){pb = txtProgressBar(min = 0, max = n.sim, style = 3)}
   #browser()
   while(k<=n.sim & !limit)
   {
@@ -229,7 +228,7 @@ plotenvelope.LSMLE=function(robustbetareg.obj,type=c("sweighted2","pearson","wei
       }
       k=k+1
       # update progress bar
-      setTxtProgressBar(pb, k)
+      if(PrgBar){setTxtProgressBar(pb, k)}
     }
     if(k==(2*n.sim)){limit=T}
   }
@@ -237,15 +236,20 @@ plotenvelope.LSMLE=function(robustbetareg.obj,type=c("sweighted2","pearson","wei
   if(!ylim.boolean)
   {
     ylim <- range(Envelope[1,],Envelope[2,],Envelope[3,],residual)
+    arg$ylim=ylim
   }
-  par(mar=c(5.0,5.0,4.0,2.0))
-  qqnorm(residual, main="Envelope Plot", xlab="Normal quantiles",ylab="Residuals",ylim=ylim, pch=16, cex=1.0, cex.lab=1.0, cex.axis=1.0, cex.main=1.0,...)
+  par(mar=c(5.0,5.0,4.0,2.0),pch=16, cex=1.0, cex.lab=1.0, cex.axis=1.0, cex.main=1.5)
+  ARG=append(list(y=residual,main="Envelope Plot", xlab="Normal quantiles",ylab="Residuals"),arg)
+  do.call(qqnorm,ARG)
   par(new=T)
-  qqnorm(Envelope[1,],axes=F,main = "",xlab="",ylab="",ylim=ylim,type="l",lty=1,lwd=1.0,...)
+  ARG=modifyList(ARG,list(y=Envelope[1,],axes=F,main = "",xlab="",ylab="",type="l",lty=1,lwd=1.0))
+  do.call(qqnorm,ARG)
   par(new=T)
-  qqnorm(Envelope[2,],axes=F,main = "",xlab="",ylab="",ylim=ylim, type="l",lty=2,lwd=1.0,...)
+  ARG=modifyList(ARG,list(y=Envelope[2,],lty=2))
+  do.call(qqnorm,ARG)
   par(new=T)
-  qqnorm(Envelope[3,],axes=F,xlab="",main = "", ylab="",ylim=ylim, type="l",lty=1,lwd=1.0,...)
+  ARG=modifyList(ARG,list(y=Envelope[3,],lty=1))
+  do.call(qqnorm,ARG)
 }
 
 #' @export
@@ -358,15 +362,17 @@ summary.LSMLE=function(obj)
   cat("---\n")
   cat("Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1 \n")
   cat("\n")
-  cat("Type of estimator: LSMLE \n")
+  if(obj$Tuning==0){cat("Type of estimator: MLE \n")}
+  else{cat("Type of estimator: LSMLE \n")}
+  cat(paste0("Pseudo R-squared: ",round(obj$pseudo.r.squared,4)),"\n")
   cat(paste0("Tuning value: alpha=",obj$Tuning),"\n")
   if(obj$Optimal.Tuning)
   {
-    cat("Tuning constant generated by the data-driven algorithm")  
+    cat("Tuning generated by the data-driven algorithm")  
   }
   if(!obj$Optimal.Tuning)
   {
-    cat("Tuning constant selected by the user")  
+    cat("Tuning selected by the user")  
   }
 }
 
@@ -400,43 +406,91 @@ plot.LSMLE=function(object,ask=TRUE,...)
         m <-readline(prompt = cat(crayon::green(text.n1)))
         if(m==1)
         {
-          plot(residuals(object,type="sweighted2"),xlab="Obs. number",ylab="Standardized Weighted 2 Residual",main="Residuals vs indices of obs.",...)
+          res=residuals(object,type="sweighted2")
+          plot(res,xlab="Obs. number",ylab="Standardized Weighted 2 Residual",main="Residuals vs indices of obs.",...)
           abline(h=0)
+          q <-readline(prompt = cat(crayon::green("Identify points? \n [1] Yes \n [2] No")))
+          if(q==1)
+          {
+            identify(res,pos=T,plot=T)
+          }
         }
         if(m==2)
         {
-          plot(residuals(object,type="sweighted"),xlab="Obs. number",ylab="Standardized Weighted Residual",main="Residuals vs indices of obs.",...)
+          res=residuals(object,type="sweighted")
+          plot(res,xlab="Obs. number",ylab="Standardized Weighted Residual",main="Residuals vs indices of obs.",...)
           abline(h=0)
+          q <-readline(prompt = cat(crayon::green("Identify points? \n [1] Yes \n [2] No")))
+          if(q==1)
+          {
+            identify(res,pos=T,plot=T)
+          }
         }
         if(m==3)
         {
-          plot(residuals(object,type="pearson"),xlab="Obs. number",ylab="Pearson Residual",main="Residuals vs indices of obs.",...)
+          res=residuals(object,type="pearson")
+          plot(res,xlab="Obs. number",ylab="Pearson Residual",main="Residuals vs indices of obs.",...)
           abline(h=0)
+          q <-readline(prompt = cat(crayon::green("Identify points? \n [1] Yes \n [2] No")))
+          if(q==1)
+          {
+            identify(res,pos=T,plot=T)
+          }
         }
         if(m==4)
         {
-          plot(residuals(object,type="weighted"),xlab="Obs. number",ylab="Weighted Residual",main="Residuals vs indices of obs.",...)
+          res=residuals(object,type="weighted")
+          plot(res,xlab="Obs. number",ylab="Weighted Residual",main="Residuals vs indices of obs.",...)
           abline(h=0)
+          q <-readline(prompt = cat(crayon::green("Identify points? \n [1] Yes \n [2] No")))
+          if(q==1)
+          {
+            identify(res,pos=T,plot=T)
+          }
         }
         if(m==5)
         {
-          plot(residuals(object,type="sweighted.gamma"),xlab="Obs. number",ylab="Standardized Weighted Gamma Residual",main="Residuals vs indices of obs.",...)
+          res=residuals(object,type="sweighted.gamma")
+          plot(res,xlab="Obs. number",ylab="Standardized Weighted Gamma Residual",main="Residuals vs indices of obs.",...)
           abline(h=0)
+          q <-readline(prompt = cat(crayon::green("Identify points? \n [1] Yes \n [2] No")))
+          if(q==1)
+          {
+            identify(res,pos=T,plot=T)
+          }
         }
         if(m==6)
         {
-          plot(residuals(object,type="sweighted2.gamma"),xlab="Obs. number",ylab="Standardized Weighted 2 Gamma Residual",main="Residuals vs indices of obs.",...)
+          residuals(object,type="sweighted2.gamma")
+          plot(res,xlab="Obs. number",ylab="Standardized Weighted 2 Gamma Residual",main="Residuals vs indices of obs.",...)
           abline(h=0)
+          q <-readline(prompt = cat(crayon::green("Identify points? \n [1] Yes \n [2] No")))
+          if(q==1)
+          {
+            identify(res,pos=T,plot=T)
+          }
         }
         if(m==7)
         {
-          plot(residuals(object,type="combined"),xlab="Obs. number",ylab="Combined Residual",main="Residuals vs indices of obs.",...)
+          res=residuals(object,type="combined")
+          plot(res,xlab="Obs. number",ylab="Combined Residual",main="Residuals vs indices of obs.",...)
           abline(h=0)
+          q <-readline(prompt = cat(crayon::green("Identify points? \n [1] Yes \n [2] No")))
+          if(q==1)
+          {
+            identify(res,pos=T,plot=T)
+          }
         }
         if(m==8)
         {
-          plot(residuals(object,type="combined.projection"),xlab="Obs. number",ylab="Combined Projection Residual",main="Residuals vs indices of obs.",...)
+          res=residuals(object,type="combined.projection")
+          plot(res,xlab="Obs. number",ylab="Combined Projection Residual",main="Residuals vs indices of obs.",...)
           abline(h=0)
+          q <-readline(prompt = cat(crayon::green("Identify points? \n [1] Yes \n [2] No")))
+          if(q==1)
+          {
+            identify(res,pos=T,plot=T)
+          }
         }
         if(m==0){show=FALSE}
         if(m==9){show.1=FALSE}
@@ -628,7 +682,7 @@ residuals.LSMLE=function(object,type=c("sweighted2","pearson","weighted","sweigh
 #' @export
 cooks.distance.LSMLE=function(object,...)
 {
-  h =hatvalues.robustbetareg.LSMLE(object)
+  h =hatvalues.LSMLE(object)
   k = length(object$coefficients$mean)
   res=residuals(object,type="pearson")
   return(h*(res^2)/(k*(1-h)^2))

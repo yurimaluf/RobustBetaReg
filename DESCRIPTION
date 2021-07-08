@@ -1,5 +1,5 @@
 Package: RobustBetaReg
-Title: What the Package Does (One Line, Title Case)
+Title: Robust of Beta Regression Model
 Version: 0.0.1.000
 Authors@R: 
     person(given = "Yuri",
@@ -7,7 +7,7 @@ Authors@R:
            role = c("aut", "cre"),
            email = "yurimaluf@gmail.com",
            comment = c(ORCID = "YOUR-ORCID-ID"))
-Description: What the package does (one paragraph).
+Description: Robust beta regression for modeling beta-distributed dependent variables, e.g., rates and proportions.
 Depends: R (>= 3.0.0), betareg, nleqslv
 License: GPL-3
 Encoding: UTF-8
@@ -16,6 +16,7 @@ Imports:
     Rmpfr,
     rstudioapi,
     crayon,
+    pracma,
     MASS,
     numDeriv,
     Formula,

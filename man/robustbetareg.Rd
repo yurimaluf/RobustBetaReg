@@ -8,7 +8,7 @@ robustbetareg(
   formula,
   data,
   alpha,
-  type = c("LMDPDE", "LSMLE"),
+  type = c("LSMLE", "LMDPDE"),
   link = c("logit", "probit", "cloglog", "cauchit", "loglog"),
   link.phi = NULL,
   control = robustbetareg.control(...),
@@ -22,7 +22,7 @@ robustbetareg(
 
 \item{alpha}{the tuning with values (0,1), for robust estimation. When alpha is equal to zero is equivalent of MLE.}
 
-\item{type}{character specification of the type of estimator. Currently, LMDPDE (default) and LSMLE.}
+\item{type}{character specification of the type of estimator. Currently, LSMLE (default) and LMDPDE.}
 
 \item{control}{a list of control arguments specified via \code{\link[=robustbetareg.control]{robustbetareg.control}}.}
 }

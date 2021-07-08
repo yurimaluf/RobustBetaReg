@@ -9,19 +9,25 @@ Psi_LSMLE_Jacobian_C <- function(Theta, y, X, Z, alpha, link_mu, link_phi) {
     .Call(`_RobustBetaReg_Psi_LSMLE_Jacobian_C`, Theta, y, X, Z, alpha, link_mu, link_phi)
 }
 
-Psi_LMDPDE_Beta_Cpp <- function(mu_hat, phi_hat, y, X, Z, alpha, link_mu, link_phi) {
-    .Call(`_RobustBetaReg_Psi_LMDPDE_Beta_Cpp`, mu_hat, phi_hat, y, X, Z, alpha, link_mu, link_phi)
-}
-
-Psi_LMDPDE_Gamma_Cpp <- function(mu_hat, phi_hat, y, X, Z, alpha, link_mu, link_phi) {
-    .Call(`_RobustBetaReg_Psi_LMDPDE_Gamma_Cpp`, mu_hat, phi_hat, y, X, Z, alpha, link_mu, link_phi)
-}
-
 Psi_LMDPDE_Cpp <- function(Theta, y, X, Z, alpha, link_mu, link_phi) {
     .Call(`_RobustBetaReg_Psi_LMDPDE_Cpp`, Theta, y, X, Z, alpha, link_mu, link_phi)
 }
 
 Psi_LMDPDE_Jacobian_C <- function(Theta, y, X, Z, alpha, link_mu, link_phi) {
     .Call(`_RobustBetaReg_Psi_LMDPDE_Jacobian_C`, Theta, y, X, Z, alpha, link_mu, link_phi)
+}
+
+Newton_LMDPDE_C <- function(Theta, y, X, Z, alpha, link_mu, link_phi) {
+    .Call(`_RobustBetaReg_Newton_LMDPDE_C`, Theta, y, X, Z, alpha, link_mu, link_phi)
+}
+
+#' @useDynLib RobustBetaReg, .registration=TRUE
+#' @importFrom Rcpp evalCpp
+times4 <- function(x) {
+    .Call(`_RobustBetaReg_times4`, x)
+}
+
+times3 <- function(x) {
+    .Call(`_RobustBetaReg_times3`, x)
 }
 

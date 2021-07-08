@@ -6,7 +6,6 @@ using namespace Rcpp;
 #include <vector>
 #include "Classes_C.h"
 
-
 arma::mat Psi_LSMLE_Beta_Cpp(NumericVector mu_hat, NumericVector phi_hat, NumericVector y, arma::mat X,arma::mat Z, double alpha, StringVector link_mu,StringVector link_phi)
 {
   double q = 1-alpha;
@@ -66,9 +65,9 @@ arma::mat Psi_LSMLE_Cpp(arma::vec Theta, NumericVector y, arma::mat X,arma::mat 
   arma::vec Gamma=Theta.subvec(k,k+m-1);
   NumericVector mu_hat = link.inv_linkmu(eta(X,Beta));
   NumericVector phi_hat = link.inv_linkphi(eta(Z,Gamma));
-  
-  arma::vec psi_beta = Psi_LSMLE_Beta_Cpp(mu_hat,phi_hat,y,X,Z,alpha,link_mu,link_phi);
-  arma::vec psi_gamma = Psi_LSMLE_Gamma_Cpp(mu_hat,phi_hat,y,X,Z,alpha,link_mu,link_phi);
+
+  arma::mat psi_beta = Psi_LSMLE_Beta_Cpp(mu_hat,phi_hat,y,X,Z,alpha,link_mu,link_phi);
+  arma::mat psi_gamma = Psi_LSMLE_Gamma_Cpp(mu_hat,phi_hat,y,X,Z,alpha,link_mu,link_phi);
   arma::mat psi = join_cols(psi_beta,psi_gamma);
   return(psi.t());
 }
@@ -130,14 +129,10 @@ arma::mat Psi_LSMLE_Jacobian_C(arma::vec Theta, NumericVector y, arma::mat X,arm
   J22 = Z.t()*Tgg*diagmat(Core3)*Tgg*Z;
   
   J = join_cols(join_rows(J11,J12),join_rows(J12.t(),J22));
-
-  //delete[] Tb; 
-  
   return(J);
 }
 
 
-// [[Rcpp::export]]
 arma::mat Psi_LMDPDE_Beta_Cpp(NumericVector mu_hat, NumericVector phi_hat, NumericVector y, arma::mat X,arma::mat Z, double alpha, StringVector link_mu,StringVector link_phi)
 {
   double q = 1-alpha;
@@ -170,7 +165,7 @@ arma::mat Psi_LMDPDE_Beta_Cpp(NumericVector mu_hat, NumericVector phi_hat, Numer
   return(result);
 }
 
-// [[Rcpp::export]]
+
 arma::mat Psi_LMDPDE_Gamma_Cpp(NumericVector mu_hat, NumericVector phi_hat, NumericVector y, arma::mat X,arma::mat Z, double alpha, StringVector link_mu,StringVector link_phi)
 {
   double q = 1-alpha;
@@ -304,3 +299,45 @@ arma::mat Psi_LMDPDE_Jacobian_C(arma::vec Theta, NumericVector y, arma::mat X,ar
   return(J);
 }
 
+// [[Rcpp::export]]
+arma::vec Newton_LMDPDE_C(arma::vec Theta, NumericVector y, arma::mat X,arma::mat Z, double alpha, StringVector link_mu,StringVector link_phi)
+{
+  int M=10;
+  int i=0;
+  double tol = 1e-3;
+  double w;
+  arma::mat H, Fx;
+  arma::vec theta=Theta;
+  arma::vec kappa;
+  bool run = true;
+  while(i<M || run)
+  {
+    H = Psi_LMDPDE_Jacobian_C(theta, y, X, Z, alpha, link_mu,link_phi);//J(x)
+    Fx = Psi_LMDPDE_Cpp(theta, y, X, Z, alpha, link_mu,link_phi);//F(x)
+    //Fx=-1*Fx;
+    kappa = solve(H,-1*Fx.t());//solve J(x)y=-F(x)
+    //kappa = inv(H)*Fx.t();//solve J(x)y=-F(x)
+    theta = kappa + theta;
+    w = sqrt(sum(kappa%kappa));
+    if(w<tol)
+      {
+        run = false;      
+      }
+    i++;
+  }
+  return(theta);
+}
+
+//' @useDynLib RobustBetaReg, .registration=TRUE
+//' @importFrom Rcpp evalCpp
+// [[Rcpp::export]]
+double times4(double x)
+  {
+    return(4*x);
+  }
+
+// [[Rcpp::export]]
+double times3(double x)
+{
+  return(3*x);
+}
