@@ -1,5 +1,5 @@
 # Robust Estimation - LSMLE
-LSMLE.Beta.Reg=function(y,x,z,alpha,link,link.phi,control=robustbetareg.control(...), ...)
+LSMLE.Beta.Reg=function(y,x,z,alpha,link,link.phi,control=robustbetareg.control(...),...)
 {
   #options(warn = 2) #Convert warnings in errors
   result=theta=list()
