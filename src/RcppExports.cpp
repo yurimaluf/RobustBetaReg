@@ -6,6 +6,11 @@
 
 using namespace Rcpp;
 
+#ifdef RCPP_USE_GLOBAL_ROSTREAM
+Rcpp::Rostream<true>&  Rcpp::Rcout = Rcpp::Rcpp_cout_get();
+Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
+#endif
+
 // Psi_LSMLE_Cpp
 arma::mat Psi_LSMLE_Cpp(arma::vec Theta, NumericVector y, arma::mat X, arma::mat Z, double alpha, StringVector link_mu, StringVector link_phi);
 RcppExport SEXP _RobustBetaReg_Psi_LSMLE_Cpp(SEXP ThetaSEXP, SEXP ySEXP, SEXP XSEXP, SEXP ZSEXP, SEXP alphaSEXP, SEXP link_muSEXP, SEXP link_phiSEXP) {
@@ -37,6 +42,24 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< StringVector >::type link_mu(link_muSEXP);
     Rcpp::traits::input_parameter< StringVector >::type link_phi(link_phiSEXP);
     rcpp_result_gen = Rcpp::wrap(Psi_LSMLE_Jacobian_C(Theta, y, X, Z, alpha, link_mu, link_phi));
+    return rcpp_result_gen;
+END_RCPP
+}
+// La_Cpp
+NumericVector La_Cpp(NumericVector mu, NumericVector phi, NumericVector mu_0, NumericVector phi_0, double alpha, NumericVector Kx, NumericVector Kz, int thrd);
+RcppExport SEXP _RobustBetaReg_La_Cpp(SEXP muSEXP, SEXP phiSEXP, SEXP mu_0SEXP, SEXP phi_0SEXP, SEXP alphaSEXP, SEXP KxSEXP, SEXP KzSEXP, SEXP thrdSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< NumericVector >::type mu(muSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type phi(phiSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type mu_0(mu_0SEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type phi_0(phi_0SEXP);
+    Rcpp::traits::input_parameter< double >::type alpha(alphaSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type Kx(KxSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type Kz(KzSEXP);
+    Rcpp::traits::input_parameter< int >::type thrd(thrdSEXP);
+    rcpp_result_gen = Rcpp::wrap(La_Cpp(mu, phi, mu_0, phi_0, alpha, Kx, Kz, thrd));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -74,23 +97,6 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// Newton_LMDPDE_C
-arma::vec Newton_LMDPDE_C(arma::vec Theta, NumericVector y, arma::mat X, arma::mat Z, double alpha, StringVector link_mu, StringVector link_phi);
-RcppExport SEXP _RobustBetaReg_Newton_LMDPDE_C(SEXP ThetaSEXP, SEXP ySEXP, SEXP XSEXP, SEXP ZSEXP, SEXP alphaSEXP, SEXP link_muSEXP, SEXP link_phiSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< arma::vec >::type Theta(ThetaSEXP);
-    Rcpp::traits::input_parameter< NumericVector >::type y(ySEXP);
-    Rcpp::traits::input_parameter< arma::mat >::type X(XSEXP);
-    Rcpp::traits::input_parameter< arma::mat >::type Z(ZSEXP);
-    Rcpp::traits::input_parameter< double >::type alpha(alphaSEXP);
-    Rcpp::traits::input_parameter< StringVector >::type link_mu(link_muSEXP);
-    Rcpp::traits::input_parameter< StringVector >::type link_phi(link_phiSEXP);
-    rcpp_result_gen = Rcpp::wrap(Newton_LMDPDE_C(Theta, y, X, Z, alpha, link_mu, link_phi));
-    return rcpp_result_gen;
-END_RCPP
-}
 // times4
 double times4(double x);
 RcppExport SEXP _RobustBetaReg_times4(SEXP xSEXP) {
@@ -113,15 +119,30 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// OpenMPTest
+int OpenMPTest(int x);
+RcppExport SEXP _RobustBetaReg_OpenMPTest(SEXP xSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< int >::type x(xSEXP);
+    rcpp_result_gen = Rcpp::wrap(OpenMPTest(x));
+    return rcpp_result_gen;
+END_RCPP
+}
+
+RcppExport SEXP testeC(SEXP, SEXP);
 
 static const R_CallMethodDef CallEntries[] = {
     {"_RobustBetaReg_Psi_LSMLE_Cpp", (DL_FUNC) &_RobustBetaReg_Psi_LSMLE_Cpp, 7},
     {"_RobustBetaReg_Psi_LSMLE_Jacobian_C", (DL_FUNC) &_RobustBetaReg_Psi_LSMLE_Jacobian_C, 7},
+    {"_RobustBetaReg_La_Cpp", (DL_FUNC) &_RobustBetaReg_La_Cpp, 8},
     {"_RobustBetaReg_Psi_LMDPDE_Cpp", (DL_FUNC) &_RobustBetaReg_Psi_LMDPDE_Cpp, 7},
     {"_RobustBetaReg_Psi_LMDPDE_Jacobian_C", (DL_FUNC) &_RobustBetaReg_Psi_LMDPDE_Jacobian_C, 7},
-    {"_RobustBetaReg_Newton_LMDPDE_C", (DL_FUNC) &_RobustBetaReg_Newton_LMDPDE_C, 7},
     {"_RobustBetaReg_times4", (DL_FUNC) &_RobustBetaReg_times4, 1},
     {"_RobustBetaReg_times3", (DL_FUNC) &_RobustBetaReg_times3, 1},
+    {"_RobustBetaReg_OpenMPTest", (DL_FUNC) &_RobustBetaReg_OpenMPTest, 1},
+    {"testeC", (DL_FUNC) &testeC, 2},
     {NULL, NULL, 0}
 };
 

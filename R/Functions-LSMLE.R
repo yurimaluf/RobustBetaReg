@@ -42,6 +42,7 @@ LSMLE.Beta.Reg=function(y,x,z,alpha,link,link.phi,control=robustbetareg.control(
   }else{
     #Point Estimation
     q=1-alpha
+    #browser()
     theta=Robst.LSMLE.Beta.Reg(y,x,z,start_theta=start_theta,alpha=alpha,linkobj=linkobj,tolerance=control$tolerance,maxit=control$maxit)
     #Predict values
     beta=theta$x[1:k]
@@ -51,11 +52,15 @@ LSMLE.Beta.Reg=function(y,x,z,alpha,link,link.phi,control=robustbetareg.control(
     mu_hat=linkobj$linkfun.mu$inv.link(eta)
     phi_hat=linkobj$linkfun.phi$inv.link(z%*%gamma)
     #Expected Standard Error
-    M.LSMLE=LSMLE_Cov_Matrix(mu_hat,phi_hat,x,z,alpha=alpha,linkobj=linkobj)
-    vcov=M.LSMLE$Cov
-    std.error.LSMLE=M.LSMLE$Std.Error
+    M.LSMLE=tryCatch(LSMLE_Cov_Matrix(mu_hat,phi_hat,x,z,alpha=alpha,linkobj=linkobj),error=function(e) NULL)
+    if(is.null(M.LSMLE))
+    {
+      vcov=std.error.LSMLE=NULL
+    }else{
+      vcov=M.LSMLE$Cov
+      std.error.LSMLE=M.LSMLE$Std.Error
+    }
   }
-  
   #Register of output values 
   y_star=log(y)-log(1-y)
   str1=str2=NULL
@@ -75,6 +80,7 @@ LSMLE.Beta.Reg=function(y,x,z,alpha,link,link.phi,control=robustbetareg.control(
   result$residuals=sweighted2_res(mu_hat,phi_hat,y=y,X=x,linkobj = linkobj)
   result$model=list(mean = x, precision = z)
   result$y=y
+  result$n=length(mu_hat)
   result$link=link
   result$link.phi=link.phi
   result$Optimal.Tuning=alpha.optimal
@@ -117,7 +123,7 @@ WaldTypeTest.LSMLE=function(object,FUN,...)
   general=FALSE
   #browser()
   if(missing(FUN)){general=T}
-  if(!object$converged){stop(Paste("There is no convergence in the model",deparse(substitute(object))))}
+  if(!object$converged){stop(paste("There is no convergence in the model",deparse(substitute(object))))}
   cl = match.call()
   n=length(object$fitted.values$mu.predict)
   V=object$vcov
@@ -164,8 +170,6 @@ WaldTypeTest.LSMLE=function(object,FUN,...)
       result.gamma$pValue=as.numeric(1-pchisq(W_alpha,df=r))
     }
     result=list(beta.wald=result.beta,gamma.wald=result.gamma,general=general,msg="Results based on LSMLE.")
-    class(result)="WaldTest_LSMLE"
-    return(result)
   }else{
     result=list()
     #Hipothesis
@@ -179,15 +183,80 @@ WaldTypeTest.LSMLE=function(object,FUN,...)
     #Register
     result$W.alpha=as.numeric(W_alpha)
     result$df=r
-    # result$H0=f
-    # result$arg=formalArgs(f)
-    # result$arg.values=formals(f)
     result$pValue=as.numeric(1-pchisq(W_alpha,df=r))
     result$general=general
     result$msg="Results based on LSMLE."
-    class(result)="WaldTest_LSMLE"
-    return(result)
   }
+  class(result)="WaldTest_LSMLE"
+  return(result)
+}
+
+#' @export
+SaddlepointTest.LSMLE=function(object,FUN=NULL,...,thrd)
+{
+  #browser()
+  if(!object$converged){stop(paste("There is no convergence in the model",deparse(substitute(object))))}
+  result=list()
+  msg="Results based on LSMLE."
+  beta_hat=object$coefficient$mean
+  if(missing(thrd)){thrd=tryCatch(parallel::detectCores(),error=function(e) 1)}
+  thrd=tryCatch(suppressWarnings(max(1,round(abs(thrd)))),error=function(e) 1)
+  gamma_hat=object$coefficient$precision
+  X=object$model$mean
+  Z=object$model$precision
+  m=ncol(X)
+  k=ncol(Z)
+  l0=rep(0,m+k)
+  B_0=G_0=general=NULL
+  N=object$n
+  linkobj=make.link(object$link,object$link.phi)
+  alpha=object$Tuning
+  if(is.null(FUN))
+  {
+    general=T
+    #Beta
+    #eta_0=beta_hat
+    ind_fix=1:m
+    ind_free=(m+1):(m+k)
+    h_beta=tryCatch(suppressWarnings(stats::optim(par=gamma_hat,sup_K_psi_C,ind_free=ind_free,ind_fix=ind_fix,eta_0=beta_hat,Beta=beta_hat,Gamma=gamma_hat,X=X,Z=Z,alpha=alpha,linkobj=linkobj,thrd=thrd,method="BFGS")$value),error=function(e) NULL)
+    if(is.null(h_beta)){msg="The test does not reach the convergence"}
+    #h_beta=stats::optim(par=gamma_hat,sup_K_psi_C,ind_free=ind_free,ind_fix=ind_fix,eta_0=beta_hat,Beta=beta_hat,Gamma=gamma_hat,X=X,Z=Z,alpha=alpha,linkobj=linkobj,method="BFGS")$value
+    #Result Register
+    result$SaddlePointTest=as.numeric(2*N*h_beta)
+    result$df=m
+    result$pValue=as.numeric(1-pchisq(2*N*h_beta,df=m))
+  }else{
+    general=F
+    result=list()
+    #Hipothesis
+    g=FUN
+    eta_0=g(c(beta_hat,gamma_hat),...)
+    ind_free=which(c(beta_hat,gamma_hat)==eta_0)
+    ind_fix=which(c(beta_hat,gamma_hat)!=eta_0)
+    if(length(ind_fix)<(m+k))
+    {
+      h_beta=tryCatch(suppressWarnings(stats::optim(par=c(beta_hat,gamma_hat)[ind_free],sup_K_psi_C,ind_free=ind_free,ind_fix=ind_fix,eta_0=eta_0[ind_fix],Beta=beta_hat,Gamma=gamma_hat,X=X,Z=Z,alpha=alpha,linkobj=linkobj,thrd=thrd,method="BFGS")$value),error=function(e) NULL)
+      if(is.null(h_beta)){msg="The test does not reach the convergence"}
+      #h_beta=stats::optim(par=c(beta_hat,gamma_hat)[ind_free],sup_K_psi_C,ind_free=ind_free,ind_fix=ind_fix,eta_0=eta_0[ind_fix],Beta=beta_hat,Gamma=gamma_hat,X=X,Z=Z,alpha=alpha,linkobj=linkobj,method="BFGS")$value
+      df=length(ind_fix)
+    }else{
+      B_0=eta_0[1:m]
+      G_0=eta_0[(m+1):(m+k)]
+      df=m+k
+      h_beta=tryCatch(suppressWarnings(-(stats::nlminb(l0,K2_psi_C,Beta=beta_hat,Gamma=gamma_hat,Beta_0=B_0,Gamma_0=G_0,X=X,Z=Z,alpha=alpha,linkobj=linkobj,thrd=thrd))$objective),error=function(e) NULL)
+      if(is.null(h_beta)){msg="The test does not reach the convergence"}
+      #h_beta=-(stats::nlminb(l0,K2_psi_C,Beta=beta_hat,Gamma=gamma_hat,Beta_0=B_0,Gamma_0=G_0,X=X,Z=Z,alpha=alpha,linkobj=linkobj))$objective
+    }
+    #Result Register
+    result$SaddlePointTest=as.numeric(2*N*h_beta)
+    result$df=df
+    result$pValue=as.numeric(1-pchisq(2*N*h_beta,df=df))
+  }
+  result$msg=msg
+  result$thrd=thrd
+  result$general=general
+  class(result)="SaddlepointTest_LSMLE"
+  return(result)
 }
 
 
@@ -251,365 +320,6 @@ plotenvelope.LSMLE=function(robustbetareg.obj,type=c("sweighted2","pearson","wei
   ARG=modifyList(ARG,list(y=Envelope[3,],lty=1))
   do.call(qqnorm,ARG)
 }
-
-#' @export
-print.LSMLE=function(obj)
-{
-  cat("Call: \n")      
-  print(obj$call)
-  cat("\n")
-  cat("Coefficients (mean model with",obj$link,"link):\n")
-  print(obj$coefficients$mean)
-  cat("\n")
-  cat("Coefficients (precision model with",obj$link.phi,"link):\n")
-  print(obj$coefficients$precision)
-  if(!obj$converged)
-  {
-    cat("\n")
-    cat("The algorithm did not reach the convergence.")
-  }
-}
-
-#' @export
-print.WaldTest_LSMLE=function(obj)
-{
-  if(obj$general)
-  {
-    #browser()
-    cat("-- Wald Type Test -- \n")
-    if(!is.null(obj$beta.wald))
-    {
-      p.valor=obj$beta.wald$pValue
-      obs=star.obs(p.valor)
-      if(p.valor<=2e-16){p.valor="<2e-16"}
-      if(p.valor>2e-16){p.valor=paste0("=",obj$beta.wald$pValue)}
-      
-      cat("Null Hypothesis: all mean coefficients equal to zero \n")  
-      cat(paste0("Value=",formatC(obj$beta.wald$W.alpha),", df=",obj$beta.wald$df,", p-Value",p.valor,obs,"\n"))  
-    }
-    if(!is.null(obj$gamma.wald))
-    {
-      p.valor=obj$gamma.wald$pValue
-      obs=star.obs(p.valor)
-      if(p.valor<=2e-16){p.valor="<2e-16"}
-      if(p.valor>2e-16){p.valor=paste0("=",obj$gamma.wald$pValue)}
-      
-      cat("Null Hypothesis: all precision coefficients equal to zero \n")  
-      cat(paste0("Value=",formatC(obj$gamma.wald$W.alpha),", df=",obj$gamma.wald$df,", p-Value",p.valor,obs,"\n"))  
-    }
-  }else{
-    cat("-- Wald Type Test -- \n")
-    p.valor=obj$pValue
-    obs=star.obs(p.valor)
-    if(p.valor<=2e-16){p.valor="<2e-16"}
-    if(p.valor>2e-16){p.valor=paste0("=",obj$pValue)}
-    cat("Null Hypothesis: set by the user \n") 
-    cat(paste0("Value=",formatC(obj$W.alpha),", df=",obj$df,", p-Value",p.valor,obs,"\n")) 
-  }
-  cat("---\n")
-  cat("Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1 \n")
-  cat("Results based on LSMLE \n")
-}
-
-
-#' @export
-summary.LSMLE=function(obj)
-{
-  b=g=obs.b=obs.g=NULL
-  beta=obj$coefficients$mean
-  gamma=obj$coefficients$precision
-  variable=names(obj$coefficients$mean)
-  variable2=names(obj$coefficients$precision)
-  std.error.beta=obj$std.error$se.mean
-  std.error.gamma=obj$std.error$se.precision
-  k=length(beta)
-  m=length(gamma)
-  for(i in 1:k)
-  {
-    p.valor=2-2*pnorm(abs(beta[i]/std.error.beta[i]))
-    obs=star.obs(p.valor)
-    if(p.valor<2e-16){p.valor="<2e-16"}
-    obs.b=c(obs.b,obs)
-    b_=formatC(c(formatC(beta[i]),formatC(std.error.beta[i]),formatC(beta[i]/std.error.beta[i]),formatC(p.valor)))
-    b=rbind(b,c(variable[i],b_))
-  }
-  b.df=as.data.frame(b)
-  b.df=cbind(b.df,obs.b)
-  b.df=format.data.frame(b.df,trim=T,width=0.1)
-  colnames(b.df)=c("","Estimate","Std. Error", "z value", "Pr(>|z|)","")
-  for(i in 1:m)
-  {
-    p.valor=2-2*pnorm(abs(gamma[i]/std.error.gamma[i]))
-    obs=star.obs(p.valor)
-    if(p.valor<2e-16){p.valor="<2e-16"}
-    obs.g=c(obs.g,obs)
-    g_=formatC(c(formatC(gamma[i]),formatC(std.error.gamma[i]),formatC(gamma[i]/std.error.gamma[i]),formatC(p.valor)))
-    g=rbind(g,c(variable2[i],g_))
-  }
-  g.df=as.data.frame(g)
-  g.df=cbind(g.df,obs.g)
-  g.df=format.data.frame(g.df,trim=T,width=0.1)
-  colnames(g.df)=c("","Estimate","Std. Error", "z value", "Pr(>|z|)","")
-  
-  cat("Call: \n")      
-  print(obj$call)
-  cat("\n")
-  cat("Coefficients (mean model with",obj$link,"link):\n")
-  print(b.df,row.names=FALSE)
-  cat("\n")
-  cat("Phi coefficients (precision model with",obj$link.phi,"link):\n")
-  print(g.df,row.names=FALSE)
-  cat("---\n")
-  cat("Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1 \n")
-  cat("\n")
-  if(obj$Tuning==0){cat("Type of estimator: MLE \n")}
-  else{cat("Type of estimator: LSMLE \n")}
-  cat(paste0("Pseudo R-squared: ",round(obj$pseudo.r.squared,4)),"\n")
-  cat(paste0("Tuning value: alpha=",obj$Tuning),"\n")
-  if(obj$Optimal.Tuning)
-  {
-    cat("Tuning generated by the data-driven algorithm")  
-  }
-  if(!obj$Optimal.Tuning)
-  {
-    cat("Tuning selected by the user")  
-  }
-}
-
-
-#' @rdname plot.LMDPDE
-#'   
-#' @export
-plot.LSMLE=function(object,ask=TRUE,...)
-{
-  getinfo=Sys.info()
-  user=getinfo[which(names(getinfo)=="user")]
-  text.main2="the graph number >\n [1] Residuals \n [2] Residuals x Linear predictor \n [3] Cook's Distance \n [4] Weights \n [5] Weigths x Residuals \n [0] Exit \n"
-  text.main=paste("Select",text.main2)
-  if(!is.na(user))
-  {
-    user=paste0(toupper(substring(user,1,1)),substring(user,2))
-    text.main=paste0(user,", select ",text.main2)
-  }
-  text.n1="Select the residual number: \n [1] sweighted2 \n [2] sweighted \n [3] pearson \n [4] weighted \n [5] sweighted.gamma \n [6] sweighted2.gamma \n [7] combined \n [8] combined.projection \n [9] back \n [0] exit \n"
-  text.n2="Select the residual type to match with linear predictor: \n [1] sweighted2 \n [2] sweighted \n [3] pearson \n [4] weighted \n [5] sweighted.gamma \n [6] sweighted2.gamma \n [7] combined \n [8] combined.projection \n [9] back \n [0] exit \n"
-  text.n5="Select the residual type to match with weights: \n [1] sweighted2 \n [2] sweighted \n [3] pearson \n [4] weighted \n [5] sweighted.gamma \n [6] sweighted2.gamma \n [7] combined \n [8] combined.projection \n [9] back \n [0] exit \n"
-  show=TRUE
-  while(show){
-    show.1=show.2=show.5=TRUE
-    rstudioapi::sendToConsole("",execute=F,focus=T,echo=T)
-    n <- as.numeric(readline(cat(crayon::green(text.main))))
-    if(n==1)
-    {
-      while(show & show.1)
-      {
-        m <-readline(prompt = cat(crayon::green(text.n1)))
-        if(m==1)
-        {
-          res=residuals(object,type="sweighted2")
-          plot(res,xlab="Obs. number",ylab="Standardized Weighted 2 Residual",main="Residuals vs indices of obs.",...)
-          abline(h=0)
-          q <-readline(prompt = cat(crayon::green("Identify points? \n [1] Yes \n [2] No")))
-          if(q==1)
-          {
-            identify(res,pos=T,plot=T)
-          }
-        }
-        if(m==2)
-        {
-          res=residuals(object,type="sweighted")
-          plot(res,xlab="Obs. number",ylab="Standardized Weighted Residual",main="Residuals vs indices of obs.",...)
-          abline(h=0)
-          q <-readline(prompt = cat(crayon::green("Identify points? \n [1] Yes \n [2] No")))
-          if(q==1)
-          {
-            identify(res,pos=T,plot=T)
-          }
-        }
-        if(m==3)
-        {
-          res=residuals(object,type="pearson")
-          plot(res,xlab="Obs. number",ylab="Pearson Residual",main="Residuals vs indices of obs.",...)
-          abline(h=0)
-          q <-readline(prompt = cat(crayon::green("Identify points? \n [1] Yes \n [2] No")))
-          if(q==1)
-          {
-            identify(res,pos=T,plot=T)
-          }
-        }
-        if(m==4)
-        {
-          res=residuals(object,type="weighted")
-          plot(res,xlab="Obs. number",ylab="Weighted Residual",main="Residuals vs indices of obs.",...)
-          abline(h=0)
-          q <-readline(prompt = cat(crayon::green("Identify points? \n [1] Yes \n [2] No")))
-          if(q==1)
-          {
-            identify(res,pos=T,plot=T)
-          }
-        }
-        if(m==5)
-        {
-          res=residuals(object,type="sweighted.gamma")
-          plot(res,xlab="Obs. number",ylab="Standardized Weighted Gamma Residual",main="Residuals vs indices of obs.",...)
-          abline(h=0)
-          q <-readline(prompt = cat(crayon::green("Identify points? \n [1] Yes \n [2] No")))
-          if(q==1)
-          {
-            identify(res,pos=T,plot=T)
-          }
-        }
-        if(m==6)
-        {
-          residuals(object,type="sweighted2.gamma")
-          plot(res,xlab="Obs. number",ylab="Standardized Weighted 2 Gamma Residual",main="Residuals vs indices of obs.",...)
-          abline(h=0)
-          q <-readline(prompt = cat(crayon::green("Identify points? \n [1] Yes \n [2] No")))
-          if(q==1)
-          {
-            identify(res,pos=T,plot=T)
-          }
-        }
-        if(m==7)
-        {
-          res=residuals(object,type="combined")
-          plot(res,xlab="Obs. number",ylab="Combined Residual",main="Residuals vs indices of obs.",...)
-          abline(h=0)
-          q <-readline(prompt = cat(crayon::green("Identify points? \n [1] Yes \n [2] No")))
-          if(q==1)
-          {
-            identify(res,pos=T,plot=T)
-          }
-        }
-        if(m==8)
-        {
-          res=residuals(object,type="combined.projection")
-          plot(res,xlab="Obs. number",ylab="Combined Projection Residual",main="Residuals vs indices of obs.",...)
-          abline(h=0)
-          q <-readline(prompt = cat(crayon::green("Identify points? \n [1] Yes \n [2] No")))
-          if(q==1)
-          {
-            identify(res,pos=T,plot=T)
-          }
-        }
-        if(m==0){show=FALSE}
-        if(m==9){show.1=FALSE}
-      }
-    }
-    if(n==2)
-    {
-      while(show & show.2)
-      {
-        m <-readline(prompt = cat(crayon::green(text.n2)))
-        if(m==1)
-        {
-          plot(object$model$mean%*%object$coefficients$mean,residuals(object,type="sweighted2"),xlab="Linear predictor",ylab="Standardized Weighted 2 Residual",main="Residuals vs linear predictor",...)
-          abline(h=0)
-        }
-        if(m==2)
-        {
-          plot(object$model$mean%*%object$coefficients$mean,residuals(object,type="sweighted"),xlab="Linear predictor",ylab="Standardized Weighted Residual",main="Residuals vs linear predictor",...)
-          abline(h=0)
-        }
-        if(m==3)
-        {
-          plot(object$model$mean%*%object$coefficients$mean,residuals(object,type="pearson"),xlab="Linear predictor",ylab="Pearson Residual",main="Residuals vs linear predictor",...)
-          abline(h=0)
-        }
-        if(m==4)
-        {
-          plot(object$model$mean%*%object$coefficients$mean,residuals(object,type="weighted"),xlab="Linear predictor",ylab="Weighted Residual",main="Residuals vs linear predictor",...)
-          abline(h=0)
-        }
-        if(m==5)
-        {
-          plot(object$model$mean%*%object$coefficients$mean,residuals(object,type="sweighted.gamma"),xlab="Linear predictor",ylab="Standardized Weighted Gamma Residual",main="Residuals vs linear predictor",...)
-          abline(h=0)
-        }
-        if(m==6)
-        {
-          plot(object$model$mean%*%object$coefficients$mean,residuals(object,type="sweighted2.gamma"),xlab="Linear predictor",ylab="Standardized Weighted 2 Gamma Residual",main="Residuals vs linear predictor",...)
-          abline(h=0)
-        }
-        if(m==7)
-        {
-          plot(object$model$mean%*%object$coefficients$mean,residuals(object,type="combined"),xlab="Linear predictor",ylab="Combined Residual",main="Residuals vs linear predictor",...)
-          abline(h=0)
-        }
-        if(m==8)
-        {
-          plot(object$model$mean%*%object$coefficients$mean,residuals(object,type="combined.projection"),xlab="Linear predictor",ylab="Combined Projection Residual",main="Residuals vs linear predictor",...)
-          abline(h=0)
-        }
-        if(m==0){show=FALSE}
-        if(m==9){show.2=FALSE}
-      }
-    }
-    if(n==3)
-    {
-      plot(cooks.distance(object),type="h",xlab="Obs. number",ylab="Cook's distance",main="Cook's distance plot",...)
-    }
-    if(n==4)
-    {
-      plot(object$weights,xlab="Obs. number",ylab="Weights",main = "Weights plot",...)
-      abline(h=0)
-    }
-    if(n==5)
-    {
-      while(show & show.5)
-      {
-        m <-readline(prompt = cat(crayon::green(text.n5)))
-        if(m==1)
-        {
-          plot(residuals(object,type="sweighted2"),object$weights,ylab="Weights",xlab="Standardized Weighted 2 Residual",main="Weights vs residuals",...)
-          abline(h=0)
-        }
-        if(m==2)
-        {
-          plot(residuals(object,type="sweighted"),object$weights,ylab="Weights",xlab="Standardized Weighted Residual",main="Weights vs residuals",...)
-          abline(h=0)
-        }
-        if(m==3)
-        {
-          plot(residuals(object,type="pearson"),object$weights,ylab="Weights",xlab="Pearson Residual",main="Weights vs residuals",...)
-          abline(h=0)
-        }
-        if(m==4)
-        {
-          plot(residuals(object,type="weighted"),object$weights,ylab="Weights",xlab="Weighted Residual",main="Weights vs residuals",...)
-          abline(h=0)
-        }
-        if(m==5)
-        {
-          plot(residuals(object,type="sweighted.gamma"),object$weights,ylab="Weights",xlab="Standardized Weighted Gamma Residual",main="Weights vs residuals",...)
-          abline(h=0)
-        }
-        if(m==6)
-        {
-          plot(residuals(object,type="sweighted2.gamma"),object$weights,ylab="Weights",xlab="Standardized Weighted 2 Gamma Residual",main="Weights vs residuals",...)
-          abline(h=0)
-        }
-        if(m==7)
-        {
-          plot(residuals(object,type="combined"),object$weights,ylab="Weights",xlab="Combined Residual",main="Weights vs residuals",...)
-          abline(h=0)
-        }
-        if(m==8)
-        {
-          plot(residuals(object,type="combined.projection"),object$weights,ylab="Weights",xlab="Combined Projection Residual",main="Weights vs residuals",...)
-          abline(h=0)
-        }
-        if(m==0){show=FALSE}
-        if(m==9){show.5=FALSE}
-      }
-    }
-    if(n==0)
-    {
-      show=FALSE
-    }
-  }
-}
-
 
 #' Residuals Method for robustbetareg Objects
 #'  

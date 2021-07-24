@@ -1,62 +1,3 @@
-# Score Function LSMLE - Beta
-Psi_Beta_LSMLE=function(Beta,Gamma,y,X,Z,alpha,linkobj)
-{
-  q=1-alpha
-  mu_hat=linkobj$linkfun.mu$inv.link(X%*%Beta)
-  phi_hat=linkobj$linkfun.phi$inv.link(Z%*%Gamma)
-  phi_q=phi_hat/q
-  
-  a.q=mu_hat*phi_q
-  b.q=(1-mu_hat)*phi_q
-  
-  y_star=log(y)-log(1-y)
-  #Phi_q=diag(phi_q)
-  mu_star=suppressWarnings(digamma(a.q)-digamma(b.q)) 
-  Tb=inverse(linkobj$linkfun.mu$d.linkfun(mu_hat))
-  f_q_star=(degbeta(y_star=y_star,mu=mu_hat,phi=phi_q))^(alpha)
-  Phi_q.Tb.f_q_star=diag(phi_q*Tb*f_q_star)
-  
-  return(t(X)%*%Phi_q.Tb.f_q_star%*%(y_star-mu_star))
-}
-
-# Score Function LSMLE - Gamma
-Psi_Gamma_LSMLE=function(Beta,Gamma,y,X,Z,alpha,linkobj)
-{
-  q=1-alpha
-  mu_hat=linkobj$linkfun.mu$inv.link(X%*%Beta)
-  phi_hat=linkobj$linkfun.phi$inv.link(Z%*%Gamma)
-  phi_q=phi_hat/q
-  
-  a.q=mu_hat*phi_q
-  b.q=(1-mu_hat)*phi_q
-  
-  y_dagger=log(1-y)
-  y_star=log(y)-y_dagger
-  mu_star=suppressWarnings(digamma(a.q)-digamma(b.q)) 
-  mu_dagger=suppressWarnings(digamma(b.q)-digamma(phi_q))
-  
-  Tg=inverse(linkobj$linkfun.phi$d.linkfun(phi_hat))/q
-  eta=mu_hat*(y_star-mu_star)+(y_dagger-mu_dagger)
-  f_q_star=degbeta(y_star,mu_hat,phi_q)^(alpha)
-  Tg.f_q_star=diag(Tg*f_q_star)
-  
-  return(t(Z)%*%Tg.f_q_star%*%eta)
-}
-
-# Modified Score Vector - LSMLE
-Psi_LSMLE=function(Theta,y,X,Z,alpha,linkobj)
-{
-  X=as.matrix(X)
-  Z=as.matrix(Z)
-  Beta=Theta[1:ncol(X)]
-  Gamma=Theta[1:ncol(Z)+ncol(X)]
-  
-  psi_beta=Psi_Beta_LSMLE(Beta,Gamma,y=y,X=X,Z=Z,alpha=alpha,linkobj=linkobj)
-  psi_gamma=Psi_Gamma_LSMLE(Beta,Gamma,y=y,X=X,Z=Z,alpha=alpha,linkobj=linkobj)
-  
-  return(c(psi_beta,psi_gamma))
-}
-
 # Robust Point Estimation - LSMLE
 Robst.LSMLE.Beta.Reg=function(y,x,z,start_theta,alpha,linkobj,tolerance,maxit)
 {
@@ -73,12 +14,11 @@ Robst.LSMLE.Beta.Reg=function(y,x,z,start_theta,alpha,linkobj,tolerance,maxit)
   theta$fvec=10
   theta$msg=NULL
   #browser()
-  theta=tryCatch(nleqslv(start_theta,Psi_LSMLE_Cpp,jac=Psi_LSMLE_Jacobian_C,y=y,X=x,Z=z,alpha=alpha,link_mu=link.mu,link_phi=link.phi,control=list(ftol=tolerance,maxit=maxit),method="Newton"),error=function(e){
-   theta$msg<-e$message
-   return(theta)})
+  theta=tryCatch(nleqslv(start_theta,Psi_LSMLE_Cpp,jac=Psi_LSMLE_Jacobian_C,y=y,X=x,Z=z,alpha=alpha,link_mu=link.mu,link_phi=link.phi,control=list(ftol=tolerance,maxit=maxit),method="Newton",jacobian = T),error=function(e){
+    theta$msg<-e$message
+    return(theta)})
   theta$converged=F
-  if(all(abs(theta$fvec)<tolerance) & !all(theta$fvec==0)){theta$converged=T}
-  
+  if(all(abs(theta$fvec)<tolerance) & !all(theta$fvec==0) & all(diag(theta$jac)<0)){theta$converged=T}
   return(theta)
 }
 
@@ -96,6 +36,7 @@ Opt.Tuning.LSMLE=function(y,x,z,link,link.phi,control)
   n=length(y)
   unstable=F
   sqv.unstable=T
+  #browser()
   est.log.lik=tryCatch(suppressWarnings(betareg.fit(x,y,z,link=link,link.phi = link.phi)),error=function(e) NULL)
   #Est.param=c(est.log.lik$coefficients$mean,est.log.lik$coefficients$precision)
   Est.param=do.call("c",est.log.lik$coefficients)
@@ -134,6 +75,7 @@ Opt.Tuning.LSMLE=function(y,x,z,link,link.phi,control)
   {
     LSMLE.par.star<-LSMLE.list[[1]]
     LSMLE.par.star$sqv=sqv
+    LSMLE.par.star$Optimal.Tuning=TRUE
     rm(LSMLE.list)
     return(LSMLE.par.star)
   }
@@ -176,6 +118,7 @@ Opt.Tuning.LSMLE=function(y,x,z,link,link.phi,control)
   {
     LSMLE.par.star=LSMLE.list[[1]]
     LSMLE.par.star$sqv=sqv
+    LSMLE.par.star$Optimal.Tuning=TRUE
     LSMLE.par.star$message="Lack of stability"
   }else{
     LSMLE.par.star=LSMLE.list[[(k-M)]]
@@ -184,7 +127,6 @@ Opt.Tuning.LSMLE=function(y,x,z,link,link.phi,control)
   }
   return(LSMLE.par.star)
 }
-
 
 #Sandwich Matrix - LSMLE
 LSMLE_Cov_Matrix=function(mu,phi,X,Z,alpha,linkobj)
@@ -252,55 +194,6 @@ LSMLE_Cov_Matrix=function(mu,phi,X,Z,alpha,linkobj)
   return(result)
 }
 
-#Psi_LSMLE Jacobian
-Psi_LSMLE_Jacobian=function(Theta,y,X,Z,alpha,linkobj)
-{
-  X=as.matrix(X)
-  Z=as.matrix(Z)
-  Beta=Theta[1:ncol(X)]
-  Gamma=Theta[1:ncol(Z)+ncol(X)]
-  q=1-alpha
-  mu_hat=linkobj$linkfun.mu$inv.link(X%*%Beta)
-  phi_hat=linkobj$linkfun.phi$inv.link(Z%*%Gamma)
-  phi_q=phi_hat/q
-  a.q=mu_hat*phi_q
-  b.q=(1-mu_hat)*phi_q
-  y_star=log(y)-log(1-y)
-  y_dagger=log(1-y)
-  mu_star=suppressWarnings(digamma(a.q)-digamma(b.q))
-  mu_dagger=suppressWarnings(digamma(b.q)-digamma(phi_q))
-  
-  d.linkmu=linkobj$linkfun.mu$d.linkfun(mu_hat)
-  d2.linkmu=linkobj$linkfun.mu$d2.linkfun(mu_hat)
-  d.linkphi=linkobj$linkfun.phi$d.linkfun(phi_hat)
-  d2.linkphi=linkobj$linkfun.phi$d2.linkfun(phi_hat)
-  
-  Tb=diag(inverse(d.linkmu))
-  Tg=diag(inverse(d.linkphi))
-  #browser()
-  
-  u_mu.mu=-(phi_q)^2*(trigamma(a.q)+trigamma(b.q))
-  u_mu.phi=((y_star-mu_star)-phi_q*(mu_hat*trigamma(a.q)-(1-mu_hat)*trigamma(b.q)))/q
-  u_mu=phi_q*(y_star-mu_star)
-  u_phi.phi=(trigamma(phi_q)-trigamma(a.q)*mu_hat^2-trigamma(b.q)*(1-mu_hat)^2)/(q^2)
-  u_phi=(mu_hat*(y_star-mu_star)+y_dagger-mu_dagger)/q
-  f_q_star=degbeta(y_star,mu_hat,phi_q)^(alpha)
-  
-  #core1=as.numeric(f_q_star*(((1-2*mu_hat)/(mu_hat-mu_hat^2))*u_mu+u_mu.mu+alpha*u_mu^2))
-  core1=as.numeric(f_q_star*(-(d2.linkmu/d.linkmu)*u_mu+u_mu.mu+alpha*u_mu^2))
-  core2=as.numeric(f_q_star*(u_mu.phi+alpha*u_mu*u_phi))
-  core3=as.numeric(f_q_star*(-(d2.linkphi/d.linkphi)*u_phi+u_phi.phi+alpha*u_phi^2))
-  
-  J11=t(X)%*%Tb%*%diag(core1)%*%Tb%*%X
-  J12=J21=t(X)%*%Tb%*%diag(core2)%*%Tg%*%Z
-  J22=t(Z)%*%Tg%*%diag(core3)%*%Tg%*%Z
-  
-  J=rbind(cbind(J11,J12),cbind(t(J21),J22))
-  return(J)
-}
-
-
-
 #Hat matrix
 hatvalues.LSMLE=function(object)
 {
@@ -318,3 +211,53 @@ hatvalues.LSMLE=function(object)
   H=sqrt(W.PHI)%*%X%*%solve(t(X)%*%W.PHI%*%X)%*%t(X)%*%sqrt(W.PHI)
   return(diag(H))
 }
+
+sup_K_psi_C=function(Theta_0,ind_free,ind_fix,eta_0,Beta,Gamma,X,Z,alpha,linkobj,thrd)
+{
+  m=ncol(X)
+  k=ncol(Z)
+  #browser()
+  #Vector assembling 
+  T_0=rep(0,(m+k))
+  T_0[ind_free]=Theta_0
+  T_0[ind_fix]=eta_0
+  B_0=T_0[1:m]
+  G_0=T_0[(m+1):(m+k)]
+  
+  l0=rep(0,(m+k))
+  return(suppressWarnings(-(stats::nlminb(l0,K2_psi_C,Beta=Beta,Gamma=Gamma,Beta_0=B_0,Gamma_0=G_0,X=X,Z=Z,alpha=alpha,linkobj=linkobj,thrd=thrd))$objective))
+}
+
+#Kumulant of Psi function
+K2_psi_C=function(l,Beta,Gamma,Beta_0,Gamma_0,X,Z,alpha,linkobj,thrd)
+{
+  k=ncol(X)
+  m=ncol(Z)
+  l1=l[1:k]
+  l2=l[(k+1):(k+m)]
+  Psi.moment=LaplaceApx2_C(Beta,Gamma,Beta_0,Gamma_0,l1,l2,X,Z,alpha,linkobj,thrd=thrd)
+  #if(any(Psi.moment<0)){browser()}
+  return(mean(log(Psi.moment)))
+}
+
+LaplaceApx2_C=function(Beta,Gamma,Beta_0,Gamma_0,l1,l2,X,Z,alpha,linkobj,thrd)
+{
+  mu=mu_0=linkobj$linkfun.mu$inv.link(X%*%Beta)
+  phi=phi_0=linkobj$linkfun.phi$inv.link(Z%*%Gamma)
+  if(!all(Beta==Beta_0))
+  {
+    mu_0=linkobj$linkfun.mu$inv.link(X%*%Beta_0)  
+  }
+  if(!all(Gamma==Gamma_0))
+  {
+    phi_0=linkobj$linkfun.phi$inv.link(Z%*%Gamma_0)  
+  }
+  Kx=(X%*%l1)/linkobj$linkfun.mu$d.linkfun(mu)
+  Kz=(Z%*%l2)/linkobj$linkfun.phi$d.linkfun(phi)
+  n=length(mu)
+  La=NULL
+  #browser()
+  La=La_Cpp(mu, phi, mu_0, phi_0, alpha, Kx, Kz,thrd=thrd) 
+  return(La)
+}
+

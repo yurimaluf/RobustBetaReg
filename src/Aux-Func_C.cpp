@@ -3,8 +3,20 @@
 using namespace arma;  
 using namespace Rcpp;
 #include <math.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <Rmath.h>
 #include <vector>
 #include "Classes_C.h"
+// Add a flag to enable OpenMP at compile time
+// [[Rcpp::plugins(openmp)]]
+#ifdef _OPENMP
+#include <omp.h>
+#else 
+#define omp_get_thread_num() 0 
+#endif 
+
+/*  LSMLE - Functions C++  */
 
 arma::mat Psi_LSMLE_Beta_Cpp(NumericVector mu_hat, NumericVector phi_hat, NumericVector y, arma::mat X,arma::mat Z, double alpha, StringVector link_mu,StringVector link_phi)
 {
@@ -112,6 +124,8 @@ arma::mat Psi_LSMLE_Jacobian_C(arma::vec Theta, NumericVector y, arma::mat X,arm
   u_phiphi=(trigamma(phi_q)-trigamma(aq)*pow(mu_hat,2)-trigamma(bq)*pow(1-mu_hat,2))/pow(q,2);
   fqstar = pow(degbeta_C(y_star,mu_hat,phi_q),alpha);
   
+  //arma::vec u_mu_test =as<arma::vec>(u_phi);
+  
   NumericVector core1, core2, core3;
   core1 = fqstar*(-(d2_linkmu/d_linkmu)*u_mu+u_mumu+alpha*pow(u_mu,2));
   core2 = fqstar*(u_muphi+alpha*u_mu*u_phi);
@@ -132,6 +146,278 @@ arma::mat Psi_LSMLE_Jacobian_C(arma::vec Theta, NumericVector y, arma::mat X,arm
   return(J);
 }
 
+double p_LSMLE_Cpp(double y_star, double mu, double phi, double mu_0, double phi_0, double alpha, double Kx, double Kz)
+{
+  double q, phi_q, a, b, a0, b0, u1, u2, muA, muB;
+  q=1-alpha;
+  phi_q=phi/q;
+  a=mu*phi_q;
+  b=phi_q-a;
+  a0=mu_0*phi_0;
+  b0=(1-mu_0)*phi_0;  
+
+  muA = R::digamma(a)-R::digamma(b);
+  muB = R::digamma(b)-R::digamma(phi_q);
+  u1=Kx*phi_q*(y_star-muA);
+  u2=Kz*(mu*(y_star-muA)-R::log1pexp(y_star)-muB)/q;
+  double f = exp(-(R::lbeta(a,b)+b*y_star+phi_q*R::log1pexp(-y_star))); 
+  double f0 = exp(-(R::lbeta(a0,b0)+b0*y_star+phi_0*R::log1pexp(-y_star)));
+  double result = (u1+u2)*pow(f,alpha)+log(f0);
+  
+  return(result);
+}
+
+double dp_LSMLE(double y, double mu, double phi, double mu_0, double phi_0, double alpha, double Kx, double Kz)
+{
+  double q, phi_q, a, b, a0, b0, u1, u2, du1, du2, muA, muB, f, f0, df, dlnf0;
+  double result, EXPY;
+  q=1-alpha;
+  phi_q=phi/q;
+  a=mu*phi_q;
+  b=phi_q-a;
+  a0=mu_0*phi_0;
+  b0=(1-mu_0)*phi_0;  
+  muA = R::digamma(a)-R::digamma(b);
+  muB = R::digamma(b)-R::digamma(phi_q);
+  EXPY=exp(y);
+  
+  u1=phi_q*(y-muA);
+  u2=(mu*(y-muA)-R::log1pexp(y)-muB)/q;
+  du1=phi_q;
+  du2=(mu-EXPY/(1+EXPY))/q;
+  f = exp(-(R::lbeta(a,b)+b*y+phi_q*R::log1pexp(-y)));
+  df = alpha*phi_q*(mu+(mu-1)*EXPY)*pow(f,alpha)/(1+EXPY);
+  dlnf0 = phi_0*(mu_0+(mu_0-1)*EXPY)/(1+EXPY);
+  result = (Kx*du1+Kz*du2)*pow(f,alpha)+(Kx*u1+Kz*u2)*df+dlnf0;
+  
+  return(result);
+}
+
+double * DXfVector_Cpp(double y_star, double mu, double phi, double alpha) {
+  
+  double EGB, AP, AMP, AMPm1, EXPY;
+  EGB=exp(-alpha*(R::lbeta(mu*phi,(1-mu)*phi)+(1-mu)*phi*y_star+phi*log(1+exp(-y_star))));
+  AP=alpha*phi;
+  AMP=AP*mu;
+  AMPm1=AP*(mu-1);
+  EXPY=exp(y_star);
+  
+  double df = (AMP+AMPm1*EXPY)*EGB/(1+EXPY);
+  double df2 = (EGB/pow(1+EXPY,2))*(pow(AMP,2)+pow(EXPY,2)*pow(AMPm1,2)+AP*EXPY*(2*AMPm1*mu-1));
+  double df3 = (EGB/pow(1+EXPY,3))*(pow(AMP,2)*(AMP+EXPY*(AMP-AP-2))+(pow(AMPm1,2))*pow(EXPY,2)*(AMP+AMPm1*EXPY+2)+AP*(2*AMPm1*mu-1)*EXPY*(AMP+EXPY*(AMPm1-1)+1));
+  
+  double fa = EGB/pow(1+EXPY,4);
+  double a1 = pow(AMP,2)*(AMP-AP-2)*EXPY*(AMP+EXPY*(AMP-AP-2)+1);
+  double a12 = pow(AMP,3)*(AMP+EXPY*(AMPm1-3));
+  double a21 = pow(AMPm1,2)*(AMP+2)*exp(2*y_star)*(AMP+EXPY*(AMPm1-1)+2);
+  double a22 = pow(AMPm1*EXPY,3)*(AMP+AMPm1*EXPY+3);
+  double a31 = AP*(2*AMPm1*mu-1)*(AMP+1)*EXPY*(AMP+EXPY*(AMPm1-2)+1);
+  double a32 = AP*(2*AMPm1*mu-1)*(AMPm1-1)*pow(EXPY,2)*(AMP+EXPY*(AMPm1-1)+2);
+  
+  double df4 = fa*(a1+a12+a21+a22+a31+a32);
+  
+  double *result = (double *) calloc(4,sizeof(double));
+  result[0]=df;
+  result[1]=df2;
+  result[2]=df3;
+  result[3]=df4;
+  return result ;
+}
+
+double* DXlnfVector_Cpp(double y_star, double mu, double phi){
+  
+  double EXPY, AP;
+  EXPY = exp(y_star);
+  AP = phi;
+  
+  double dlnf = AP*(mu+(mu-1)*EXPY)/(1+EXPY);
+  double d2lnf = -AP*EXPY/pow(1+EXPY,2);
+  double d3lnf = AP*EXPY*(EXPY-1)/pow(1+EXPY,3);
+  double d4lnf = -AP*EXPY*(-4*EXPY+(pow(EXPY,2))+1)/pow(1+EXPY,4);
+  
+  //List result = List::create(dlnf,d2lnf, d3lnf, d4lnf);
+  double *result = (double *) calloc(4,sizeof(double));
+  result[0]=dlnf;
+  result[1]=d2lnf;
+  result[2]=d3lnf;
+  result[3]=d4lnf;
+  return result;
+}
+
+double DerivativeVector_Cpp(double y_star, double mu, double phi, double mu_0,double phi_0, double alpha, double Kx,double Kz, double p0) {
+  
+  double phi_q,a,b, muA, muB, EXPY;
+  double q=1-alpha;
+  double *Df = (double *) calloc(4,sizeof(double));
+  double *Dlnf = (double *) calloc(4,sizeof(double));
+  
+  double ep0=exp(p0);
+  
+  phi_q=phi/q;
+  a=mu*phi_q;
+  b=phi_q-a;
+  muA = R::digamma(a)-R::digamma(b);
+  muB = R::digamma(b)-R::digamma(phi_q);
+  EXPY=exp(y_star);
+  
+  double u1= phi_q*(y_star-muA);
+  double u2= (mu*(y_star-muA)-std::log1p(exp(y_star))-muB)/q;
+  double du1= phi_q;
+  double du2= (mu-EXPY/(1+EXPY))/q;
+  double d2u2=-EXPY/(q*pow((1+EXPY),2));
+  double d3u2=(1/q)*EXPY*(EXPY-1)/pow(1+EXPY,3);
+  double d4u2=(-1/q)*EXPY*(-4*EXPY+pow(EXPY,2)+1)/pow(1+EXPY,4);
+  
+  double f =  exp(-alpha*(R::lbeta(a,b)+b*y_star+phi_q*log(1+exp(-y_star))));
+  Df = DXfVector_Cpp(y_star, mu, phi_q, alpha);
+  double df = Df[0];
+  double d2f = Df[1];
+  double d3f = Df[2];
+  double d4f = Df[3];
+  
+  Dlnf = DXlnfVector_Cpp(y_star, mu_0, phi_0);
+  double dlnf = Dlnf[0];
+  double d2lnf = Dlnf[1];
+  double d3lnf = Dlnf[2];
+  double d4lnf = Dlnf[3];
+  
+  double D2 = (Kz*d2u2)*f+2*(Kx*du1+Kz*du2)*df+(Kx*u1+Kz*u2)*d2f+d2lnf;
+  double D3 = (Kz*d3u2)*f+3*(Kz*d2u2)*df+3*(Kx*du1+Kz*du2)*d2f+(Kx*u1+Kz*u2)*d3f+d3lnf;
+  double D4 = (Kz*d4u2)*f+4*(Kz*d3u2)*df+6*(Kz*d2u2)*d2f+4*(Kx*du1+Kz*du2)*d3f+(Kx*u1+Kz*u2)*d4f+d4lnf;
+  
+  double a1=D4/(8*pow(D2,2))-5*(pow(D3,2))/(24*pow(D2,3));
+  double result = pow(2*pi/std::abs(D2),0.5)*ep0*(1+a1);
+  
+  free(Df);
+  free(Dlnf);
+  
+  return result;
+}
+
+double NQ_LSMLE(double y, double mu, double phi, double mu_0, double phi_0, double alpha, double Kx, double Kz)
+{
+  double result, D1, D2, q, phi_q, a, b, a0, b0, u1, u2, du1, du2, d2u2, muA, muB, f, f0, df, d2f, dlnf0, d2lnf0;
+  double AP, AMP, AMPm1, EXPY, EGB;
+  q=1-alpha;
+  phi_q=phi/q;
+  a=mu*phi_q;
+  b=phi_q-a;
+  a0=mu_0*phi_0;
+  b0=(1-mu_0)*phi_0;  
+  muA = R::digamma(a)-R::digamma(b);
+  muB = R::digamma(b)-R::digamma(phi_q);
+  
+  AP=alpha*phi_q;
+  AMP=AP*mu;
+  AMPm1=AP*(mu-1);
+  EXPY=exp(y);
+  EGB=exp(-alpha*(R::lbeta(a,b)+b*y+phi_q*log(1+exp(-y))));
+  
+  u1=phi_q*(y-muA);
+  u2=(mu*(y-muA)-R::log1pexp(y)-muB)/q;
+  du1=phi_q;
+  du2=(mu-EXPY/(1+EXPY))/q;
+  d2u2=-EXPY/(q*pow((1+EXPY),2));
+  
+  df = AP*(mu+(mu-1)*EXPY)*EGB/(1+EXPY);
+  d2f = (EGB/pow(1+EXPY,2))*(pow(AMP,2)+pow(EXPY,2)*pow(AMPm1,2)+AP*EXPY*(2*AMPm1*mu-1));
+  dlnf0 = phi_0*(mu_0+(mu_0-1)*EXPY)/(1+EXPY);
+  d2lnf0 = -phi_0*EXPY/pow(1+EXPY,2);
+  
+  D1 = (Kx*du1+Kz*du2)*EGB+(Kx*u1+Kz*u2)*df+dlnf0;
+  D2 = (Kz*d2u2)*EGB+2*(Kx*du1+Kz*du2)*df+(Kx*u1+Kz*u2)*d2f+d2lnf0;
+  
+  result=D1/D2;
+  
+  return(result);
+}
+
+double uniroot_C(double lower, double upper, double mu, double phi, double mu_0, double phi_0, double alpha, double Kx, double Kz)
+{
+  double y0, y1, dy, NQ;
+  int intMax = 200;
+  int k=1;
+  double tol = 1e-5;//tolerance
+  bool run = true;
+  
+  //IntegerVector inty = seq((int)lower, (int)upper);
+  //NumericVector yy = as<NumericVector>(inty);
+  
+  y0=(upper+lower)/2; //initial guess
+  while(run)
+    {
+      NQ=NQ_LSMLE(y0,mu,phi,mu_0,phi_0,alpha,Kx,Kz);
+      y1=y0-NQ;
+      if(std::abs(y1-y0)<tol)
+        {
+          dy=dp_LSMLE(y1,mu,phi,mu_0, phi_0, alpha, Kx,Kz);
+          if(std::abs(dy)<tol)
+            {
+              run=false;
+            }
+        }
+      if(k>=intMax){run=false;}
+      y0=y1;
+      k++;
+    }
+  return(y1);
+}
+
+// [[Rcpp::export]]
+NumericVector La_Cpp(NumericVector mu, NumericVector phi, NumericVector mu_0,NumericVector phi_0, double alpha, NumericVector Kx,NumericVector Kz, int thrd)
+{
+  int i;
+  int size = mu.size();
+  double y0, p0;
+  NumericVector result (size);
+  double *v = (double *) calloc(size,sizeof(double));
+  //Inputs
+  double *Vmu = (double *) calloc(size,sizeof(double));
+  double *Vphi = (double *) calloc(size,sizeof(double));
+  double *Vmu_0 = (double *) calloc(size,sizeof(double));
+  double *Vphi_0 = (double *) calloc(size,sizeof(double));
+  double *VKx = (double *) calloc(size,sizeof(double));
+  double *VKz = (double *) calloc(size,sizeof(double));
+  //Vector assembling
+  for(i=0;i<40;i++)
+  {
+    Vmu[i]=mu[i];
+    Vphi[i]=phi[i];
+    Vmu_0[i]=mu_0[i];
+    Vphi_0[i]=phi_0[i];
+    VKx[i]=Kx[i];
+    VKz[i]=Kz[i];
+  }
+#if _OPENMP
+  omp_set_num_threads(thrd); 
+#endif  
+#pragma omp parallel shared(size,v,Vmu,Vphi,Vmu_0,Vphi_0,VKx,VKz,alpha) private(i,y0,p0)
+{
+#pragma omp for
+  for(i=0;i<size;i++)
+    {
+      y0=uniroot_C(-25, 25, Vmu[i], Vphi[i], Vmu_0[i], Vphi_0[i], alpha, VKx[i], VKz[i]);
+      p0=p_LSMLE_Cpp(y0, Vmu[i], Vphi[i], Vmu_0[i], Vphi_0[i], alpha, VKx[i], VKz[i]);     
+      v[i]=DerivativeVector_Cpp(y0, Vmu[i], Vphi[i],Vmu_0[i],Vphi_0[i],alpha,VKx[i],VKz[i],p0);
+    }
+} 
+for(i=0; i<size;i++)
+  {
+    result[i]=v[i];
+  }
+  free (v);
+  free (Vmu);
+  free (Vphi);
+  free (Vmu_0);
+  free (Vphi_0);
+  free (VKx);
+  free (VKz);
+
+  return(result);
+}
+
+
+/*  LMDPDE - Functions C++  */
 
 arma::mat Psi_LMDPDE_Beta_Cpp(NumericVector mu_hat, NumericVector phi_hat, NumericVector y, arma::mat X,arma::mat Z, double alpha, StringVector link_mu,StringVector link_phi)
 {
@@ -299,34 +585,8 @@ arma::mat Psi_LMDPDE_Jacobian_C(arma::vec Theta, NumericVector y, arma::mat X,ar
   return(J);
 }
 
-// [[Rcpp::export]]
-arma::vec Newton_LMDPDE_C(arma::vec Theta, NumericVector y, arma::mat X,arma::mat Z, double alpha, StringVector link_mu,StringVector link_phi)
-{
-  int M=10;
-  int i=0;
-  double tol = 1e-3;
-  double w;
-  arma::mat H, Fx;
-  arma::vec theta=Theta;
-  arma::vec kappa;
-  bool run = true;
-  while(i<M || run)
-  {
-    H = Psi_LMDPDE_Jacobian_C(theta, y, X, Z, alpha, link_mu,link_phi);//J(x)
-    Fx = Psi_LMDPDE_Cpp(theta, y, X, Z, alpha, link_mu,link_phi);//F(x)
-    //Fx=-1*Fx;
-    kappa = solve(H,-1*Fx.t());//solve J(x)y=-F(x)
-    //kappa = inv(H)*Fx.t();//solve J(x)y=-F(x)
-    theta = kappa + theta;
-    w = sqrt(sum(kappa%kappa));
-    if(w<tol)
-      {
-        run = false;      
-      }
-    i++;
-  }
-  return(theta);
-}
+
+/*    Test Functions    */
 
 //' @useDynLib RobustBetaReg, .registration=TRUE
 //' @importFrom Rcpp evalCpp
@@ -340,4 +600,20 @@ double times4(double x)
 double times3(double x)
 {
   return(3*x);
+}
+
+// [[Rcpp::export]]
+int OpenMPTest(int x)
+{
+  int j=0;
+#if _OPENMP
+  omp_set_num_threads(x);//define number of threads 
+#endif   
+  #pragma omp parallel firstprivate(j)
+  {
+    j=omp_get_thread_num();
+    Rprintf("The id of this Thread is %i\n", j);
+  }
+//Rcout << "O id da Thread j eh: " << j << "\n";
+return(j);
 }

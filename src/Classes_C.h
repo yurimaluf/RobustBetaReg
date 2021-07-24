@@ -5,7 +5,7 @@ using namespace Rcpp;
 #include <math.h>
 #include <vector>
 
-const double pi = 3.141593;
+const double pi = 3.14159265359;
 
 NumericVector ddnorm(NumericVector x)
 {
@@ -227,4 +227,5 @@ NumericVector Link::inv_linkphi(NumericVector eta)
   }
   return(0);
 }
+
 

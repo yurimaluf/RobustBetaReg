@@ -17,11 +17,13 @@ Imports:
     rstudioapi,
     crayon,
     pracma,
+    rootSolve,
     MASS,
     numDeriv,
     Formula,
     robustbase,
     Matrix,
+    parallel,
     Rcpp
 Suggests: 
     knitr,

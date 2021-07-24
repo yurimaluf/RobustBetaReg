@@ -9,16 +9,16 @@ Psi_LSMLE_Jacobian_C <- function(Theta, y, X, Z, alpha, link_mu, link_phi) {
     .Call(`_RobustBetaReg_Psi_LSMLE_Jacobian_C`, Theta, y, X, Z, alpha, link_mu, link_phi)
 }
 
+La_Cpp <- function(mu, phi, mu_0, phi_0, alpha, Kx, Kz, thrd) {
+    .Call(`_RobustBetaReg_La_Cpp`, mu, phi, mu_0, phi_0, alpha, Kx, Kz, thrd)
+}
+
 Psi_LMDPDE_Cpp <- function(Theta, y, X, Z, alpha, link_mu, link_phi) {
     .Call(`_RobustBetaReg_Psi_LMDPDE_Cpp`, Theta, y, X, Z, alpha, link_mu, link_phi)
 }
 
 Psi_LMDPDE_Jacobian_C <- function(Theta, y, X, Z, alpha, link_mu, link_phi) {
     .Call(`_RobustBetaReg_Psi_LMDPDE_Jacobian_C`, Theta, y, X, Z, alpha, link_mu, link_phi)
-}
-
-Newton_LMDPDE_C <- function(Theta, y, X, Z, alpha, link_mu, link_phi) {
-    .Call(`_RobustBetaReg_Newton_LMDPDE_C`, Theta, y, X, Z, alpha, link_mu, link_phi)
 }
 
 #' @useDynLib RobustBetaReg, .registration=TRUE
@@ -29,5 +29,9 @@ times4 <- function(x) {
 
 times3 <- function(x) {
     .Call(`_RobustBetaReg_times3`, x)
+}
+
+OpenMPTest <- function(x) {
+    .Call(`_RobustBetaReg_OpenMPTest`, x)
 }
 
