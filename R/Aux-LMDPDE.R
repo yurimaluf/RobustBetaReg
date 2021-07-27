@@ -1,27 +1,3 @@
-# Robust Point Estimation - LMDPDE
-Robst.LMDPDE.Beta.Reg=function(y,x,z,start_theta,alpha,linkobj,tolerance,maxit)
-{
-  theta=list()
-  link.mu=attributes(linkobj)$name.link.mu
-  link.phi=attributes(linkobj)$name.link.phi
-  if(missing(tolerance)){tolerance=1e-3}
-  if(missing(maxit)){maxit=150}
-  if(missing(start_theta))
-  {
-    mle=tryCatch(suppressWarnings(betareg.fit(x,y,z,link=link.mu,link.phi=link.phi)),error=function(e) NULL)
-    start_theta=as.numeric(do.call("c",mle$coefficients))
-  }
-  theta$x=rep(0,length(start_theta))
-  theta$fvec=10
-  theta$msg=theta$error=NULL
-  theta=tryCatch(nleqslv(start_theta,Psi_LMDPDE_Cpp,jac=Psi_LMDPDE_Jacobian_C,y=y,X=x,Z=z,alpha=alpha,link_mu=link.mu,link_phi=link.phi,control=list(ftol=tolerance,maxit=maxit),method="Newton",jacobian = T),error=function(e){
-    theta$msg<-e$message
-    return(theta)})
-  theta$converged=F
-  if(all(abs(theta$fvec)<tolerance) & !all(theta$fvec==0) & all(diag(theta$jac)<0)){theta$converged=T}
-  return(theta)
-}
-
 # Auto Selecting tuning parameter algorithm
 Opt.Tuning.LMDPDE=function(y,x,z,link,link.phi,control)
 {
@@ -45,22 +21,22 @@ Opt.Tuning.LMDPDE=function(y,x,z,link,link.phi,control)
   for(k in 1:(M+1))
   {
     control$start=Est.param
-    LMDPDE.par=tryCatch(LMDPDE.Beta.Reg(y,x,z,alpha=alpha_tuning[k],link=link,link.phi=link.phi,control = control),error=function(e){LMDPDE.par$converged<-FALSE; return(LMDPDE.par)})
+    LMDPDE.par=tryCatch(LMDPDE.fit(y,x,z,alpha=alpha_tuning[k],link=link,link.phi=link.phi,control = control),error=function(e){LMDPDE.par$converged<-FALSE; return(LMDPDE.par)})
     if(!LMDPDE.par$converged)
     {
       control$start=ponto.inicial.temp
-      LMDPDE.par=tryCatch(LMDPDE.Beta.Reg(y,x,z,alpha=alpha_tuning[k],link=link,link.phi=link.phi,control = control),error=function(e){LMDPDE.par$converged<-FALSE; return(LMDPDE.par)})
+      LMDPDE.par=tryCatch(LMDPDE.fit(y,x,z,alpha=alpha_tuning[k],link=link,link.phi=link.phi,control = control),error=function(e){LMDPDE.par$converged<-FALSE; return(LMDPDE.par)})
     }
     if(!LMDPDE.par$converged)
     {
       control$start=ponto.inicial.robst
-      LMDPDE.par=tryCatch(LMDPDE.Beta.Reg(y,x,z,alpha=alpha_tuning[k],link=link,link.phi=link.phi,control = control),error=function(e){LMDPDE.par$converged<-FALSE; return(LMDPDE.par)})
+      LMDPDE.par=tryCatch(LMDPDE.fit(y,x,z,alpha=alpha_tuning[k],link=link,link.phi=link.phi,control = control),error=function(e){LMDPDE.par$converged<-FALSE; return(LMDPDE.par)})
     }
     if(LMDPDE.par$converged)
     {
       ponto.inicial.temp=Par.q(LMDPDE.par)
     }
-    if(any(is.na(Z.q(LMDPDE.par))) || is.null(SE.q(LMDPDE.par)))
+    if(is.null(LMDPDE.par) || any(is.na(Z.q(LMDPDE.par))) || is.null(SE.q(LMDPDE.par)))
     {
       sqv.unstable=F
       unstable=T
@@ -81,16 +57,16 @@ Opt.Tuning.LMDPDE=function(y,x,z,link,link.phi,control)
   while(sqv.unstable)
   {
     control$start=Est.param
-    LMDPDE.par=tryCatch(LMDPDE.Beta.Reg(y,x,z,alpha=alpha_tuning[k],link=link,link.phi=link.phi,control = control),error=function(e){LMDPDE.par$converged<-FALSE; return(LMDPDE.par)})
+    LMDPDE.par=tryCatch(LMDPDE.fit(y,x,z,alpha=alpha_tuning[k],link=link,link.phi=link.phi,control = control),error=function(e){LMDPDE.par$converged<-FALSE; return(LMDPDE.par)})
     if(!LMDPDE.par$converged)
     {
       control$start=ponto.inicial.temp
-      LMDPDE.par=tryCatch(LMDPDE.Beta.Reg(y,x,z,alpha=alpha_tuning[k],link=link,link.phi=link.phi,control = control),error=function(e) {LMDPDE.par$converged<-FALSE; return(LMDPDE.par)})
+      LMDPDE.par=tryCatch(LMDPDE.fit(y,x,z,alpha=alpha_tuning[k],link=link,link.phi=link.phi,control = control),error=function(e) {LMDPDE.par$converged<-FALSE; return(LMDPDE.par)})
     }
     if(!LMDPDE.par$converged)
     {
       control$start=ponto.inicial.robst
-      LMDPDE.par=tryCatch(LMDPDE.Beta.Reg(y,x,z,alpha=alpha_tuning[k],link=link,link.phi=link.phi,control = control),error=function(e) {LMDPDE.par$converged<-FALSE; return(LMDPDE.par)})
+      LMDPDE.par=tryCatch(LMDPDE.fit(y,x,z,alpha=alpha_tuning[k],link=link,link.phi=link.phi,control = control),error=function(e) {LMDPDE.par$converged<-FALSE; return(LMDPDE.par)})
     }
     if(LMDPDE.par$converged)
     {

@@ -76,10 +76,10 @@ LSMLE.Beta.Reg=function(y,x,z,alpha,link,link.phi,control=robustbetareg.control(
   result$start=start_theta #Alterar caso optar por duas tentativas de ponto inicial
   result$weights=(degbeta(y_star,mu_hat,phi_hat/q))^(alpha) #Pesos 
   result$Tuning=alpha
-  result$Psi.Value=theta$fvec
+  #result$Psi.Value=theta$fvec
   result$residuals=sweighted2_res(mu_hat,phi_hat,y=y,X=x,linkobj = linkobj)
-  result$model=list(mean = x, precision = z)
-  result$y=y
+  #result$model=list(mean = x, precision = z)
+  #result$y=y
   result$n=length(mu_hat)
   result$link=link
   result$link.phi=link.phi
@@ -261,23 +261,23 @@ SaddlepointTest.LSMLE=function(object,FUN=NULL,...,thrd)
 
 
 #' @export  
-plotenvelope.LSMLE=function(robustbetareg.obj,type=c("sweighted2","pearson","weighted","sweighted","sweighted.gamma","sweighted2.gamma","combined","combined.projection"),conf=0.95,n.sim=50,PrgBar=T,control=robustbetareg.control(...), ...)
+plotenvelope.LSMLE=function(object,type=c("sweighted2","pearson","weighted","sweighted","sweighted.gamma","sweighted2.gamma","combined","combined.projection"),conf=0.95,n.sim=50,PrgBar=T,control=robustbetareg.control(...), ...)
 {
-  if(missing(control)){control=robustbetareg.control(robustbetareg.obj)}
+  if(missing(control)){control=robustbetareg.control(object)}
   type = match.arg(type)
   ylim.boolean=hasArg(ylim)
   arg=list(...)
   limit=FALSE
   y.sim=ResEnvelop=NULL
-  link=robustbetareg.obj$link
-  link.phi=robustbetareg.obj$link.phi
-  y=robustbetareg.obj$y
-  x=as.matrix(robustbetareg.obj$model$mean)
-  z=as.matrix(robustbetareg.obj$model$precision)
-  n=length(robustbetareg.obj$fitted.values$mu.predict)
-  a=robustbetareg.obj$fitted.values$mu.predict*robustbetareg.obj$fitted.values$phi.predict
-  b=(1-robustbetareg.obj$fitted.values$mu.predict)*robustbetareg.obj$fitted.values$phi.predict
-  residual=residuals(robustbetareg.obj,type=type)
+  link=object$link
+  link.phi=object$link.phi
+  y=object$y
+  x=as.matrix(object$model$mean)
+  z=as.matrix(object$model$precision)
+  n=length(object$fitted.values$mu.predict)
+  a=object$fitted.values$mu.predict*object$fitted.values$phi.predict
+  b=(1-object$fitted.values$mu.predict)*object$fitted.values$phi.predict
+  residual=residuals(object,type=type)
   k=1
   if(PrgBar){pb = txtProgressBar(min = 0, max = n.sim, style = 3)}
   #browser()
@@ -286,7 +286,7 @@ plotenvelope.LSMLE=function(robustbetareg.obj,type=c("sweighted2","pearson","wei
     y.sim=pmax(pmin(sapply(seq(1,n,1),function(i) rbeta(1,a[i],b[i])),1-.Machine$double.eps),.Machine$double.eps)
     est.mle=betareg.fit(x,y,z,link=link,link.phi = link.phi)
     start=c(est.mle$coefficients$mean,est.mle$coefficients$precision)
-    LSMLE.sim=tryCatch(LSMLE.Beta.Reg(y=y.sim,x=x,z=z,alpha=robustbetareg.obj$Tuning,link=link,link.phi=link.phi,start=start),error=function(e){LSMLE.sim$converged<-FALSE; return(LSMLE.sim)})
+    LSMLE.sim=tryCatch(LSMLE.Beta.Reg(y=y.sim,x=x,z=z,alpha=object$Tuning,link=link,link.phi=link.phi,start=start),error=function(e){LSMLE.sim$converged<-FALSE; return(LSMLE.sim)})
     if(LSMLE.sim$converged)
     {
       if(type=="sweighted2")
@@ -341,8 +341,8 @@ plotenvelope.LSMLE=function(robustbetareg.obj,type=c("sweighted2","pearson","wei
 #' @references  \href{https://onlinelibrary.wiley.com/doi/abs/10.1002/bimj.201600136}{Espinheira, P.L., Santos, E.G.and Cribari-Neto, F. (2017). On nonlinear beta regression residuals. Biometrical Journal, 59(3), 445-461.} 
 #' 
 #' @examples 
-#' rbr=robustbetareg(I(food/income)~income+persons|1,data=FoodExpenditure,alpha=0.08)
-#' residuals(rbr,type="sweighted")
+#' fit=robustbetareg(I(food/income)~income+persons|1,data=FoodExpenditure,alpha=0.08)
+#' residuals(fit,type="sweighted")
 #' 
 #' @export
 residuals.LSMLE=function(object,type=c("sweighted2","pearson","weighted","sweighted","sweighted.gamma","sweighted2.gamma","combined","combined.projection"))

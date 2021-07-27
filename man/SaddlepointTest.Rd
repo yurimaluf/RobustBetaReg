@@ -13,7 +13,7 @@ SaddlepointTest(object, FUN, ..., thrd)
 
 \item{...}{further arguments to be passed}
 
-\item{thrd}{number (integer) of threads to speed up the process. If missing the value is autodetected by the available number of multi-core processor}
+\item{thrd}{number (integer) of threads to speed up the process. If missing, the value is autodetected by the available number of multi-core processor}
 }
 \description{
 Saddlepoint tests for both simple and composite hypothesis for independent but non-homogeneous observations, based on LSMLE and LMDPDE.

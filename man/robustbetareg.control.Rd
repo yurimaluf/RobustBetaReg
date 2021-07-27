@@ -16,7 +16,7 @@ robustbetareg.control(
 )
 }
 \arguments{
-\item{object}{fitted model object of class "LMDPDE" or "LSMLE".}
+\item{object}{fitted model object of class "LSMLE" or "LMDPDE".}
 
 \item{start}{a numeric vector with an initial guess of the root of estimation equation.}
 

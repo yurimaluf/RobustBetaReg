@@ -31,8 +31,8 @@ The definitions of the first four residuals are provided in Espinheira et al. (2
 For the last four residuals the definitions are described in Espinheira et al. (2017): Last equation of Equation 7 and Equation 10 for "\code{sweighted.gamma}" and "\code{sweighted2.gamma}" respectively, Equation 9 for "\code{combined}", and Equation 11 for "\code{combined.projection}".
 }
 \examples{
-rbr=robustbetareg(I(food/income)~income+persons|1,data=FoodExpenditure,alpha=0.08)
-residuals(rbr,type="sweighted")
+fit=robustbetareg(I(food/income)~income+persons|1,data=FoodExpenditure,alpha=0.08)
+residuals(fit,type="sweighted")
 
 }
 \references{

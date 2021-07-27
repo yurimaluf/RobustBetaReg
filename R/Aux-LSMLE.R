@@ -1,33 +1,9 @@
-# Robust Point Estimation - LSMLE
-Robst.LSMLE.Beta.Reg=function(y,x,z,start_theta,alpha,linkobj,tolerance,maxit)
-{
-  theta=list()
-  link.mu=attributes(linkobj)$name.link.mu
-  link.phi=attributes(linkobj)$name.link.phi
-  if(missing(tolerance)){tolerance=1e-3}
-  if(missing(maxit)){maxit=150}
-  if(missing(start_theta)){
-    mle=tryCatch(suppressWarnings(betareg.fit(x,y,z,link=link.mu,link.phi=link.phi)),error=function(e) NULL)
-    start_theta=as.numeric(do.call("c",mle$coefficients))
-  }
-  theta$x=rep(0,length(start_theta))
-  theta$fvec=10
-  theta$msg=NULL
-  #browser()
-  theta=tryCatch(nleqslv(start_theta,Psi_LSMLE_Cpp,jac=Psi_LSMLE_Jacobian_C,y=y,X=x,Z=z,alpha=alpha,link_mu=link.mu,link_phi=link.phi,control=list(ftol=tolerance,maxit=maxit),method="Newton",jacobian = T),error=function(e){
-    theta$msg<-e$message
-    return(theta)})
-  theta$converged=F
-  if(all(abs(theta$fvec)<tolerance) & !all(theta$fvec==0) & all(diag(theta$jac)<0)){theta$converged=T}
-  return(theta)
-}
-
 # Auto Selecting tuning parameter algorithm
 Opt.Tuning.LSMLE=function(y,x,z,link,link.phi,control)
 {
   if(missing(control)){control=robustbetareg.control()}
   control$alpha.optimal=FALSE
-  LSMLE.list=list()
+  LSMLE.list=LSMLE.par=list()
   zq.t=NULL
   alpha_tuning=seq(0,0.5,0.02)
   K=length(alpha_tuning)
@@ -36,7 +12,6 @@ Opt.Tuning.LSMLE=function(y,x,z,link,link.phi,control)
   n=length(y)
   unstable=F
   sqv.unstable=T
-  #browser()
   est.log.lik=tryCatch(suppressWarnings(betareg.fit(x,y,z,link=link,link.phi = link.phi)),error=function(e) NULL)
   #Est.param=c(est.log.lik$coefficients$mean,est.log.lik$coefficients$precision)
   Est.param=do.call("c",est.log.lik$coefficients)
@@ -46,16 +21,16 @@ Opt.Tuning.LSMLE=function(y,x,z,link,link.phi,control)
   for(k in 1:(M+1))
   {
     control$start=Est.param
-    LSMLE.par=tryCatch(LSMLE.Beta.Reg(y,x,z,alpha=alpha_tuning[k],link=link,link.phi=link.phi,control = control),error=function(e) {LSMLE.par$converged<-FALSE; return(LSMLE.par)})
+    LSMLE.par=tryCatch(LSMLE.fit(y,x,z,alpha=alpha_tuning[k],link=link,link.phi=link.phi,control = control),error=function(e) {LSMLE.par$converged<-FALSE; return(LSMLE.par)})
     if(!LSMLE.par$converged)
     {
       control$start=ponto.inicial.temp
-      LSMLE.par=tryCatch(LSMLE.Beta.Reg(y,x,z,alpha=alpha_tuning[k],link=link,link.phi=link.phi,control = control),error=function(e){LSMLE.par$converged<-FALSE; return(LSMLE.par)})
+      LSMLE.par=tryCatch(LSMLE.fit(y,x,z,alpha=alpha_tuning[k],link=link,link.phi=link.phi,control = control),error=function(e){LSMLE.par$converged<-FALSE; return(LSMLE.par)})
     }
     if(!LSMLE.par$converged)
     {
       control$start=ponto.inicial.robst
-      LSMLE.par=tryCatch(LSMLE.Beta.Reg(y,x,z,alpha=alpha_tuning[k],link=link,link.phi=link.phi,control = control),error=function(e){LSMLE.par$converged<-FALSE; return(LSMLE.par)})
+      LSMLE.par=tryCatch(LSMLE.fit(y,x,z,alpha=alpha_tuning[k],link=link,link.phi=link.phi,control = control),error=function(e){LSMLE.par$converged<-FALSE; return(LSMLE.par)})
     }
     if(LSMLE.par$converged)
     {
@@ -84,16 +59,16 @@ Opt.Tuning.LSMLE=function(y,x,z,link,link.phi,control)
   while(sqv.unstable)
   {
     control$start=Est.param
-    LSMLE.par=tryCatch(LSMLE.Beta.Reg(y,x,z,alpha=alpha_tuning[k],link=link,link.phi=link.phi,control = control),error=function(e){LSMLE.par$converged<-FALSE; return(LSMLE.par)})
+    LSMLE.par=tryCatch(LSMLE.fit(y,x,z,alpha=alpha_tuning[k],link=link,link.phi=link.phi,control = control),error=function(e){LSMLE.par$converged<-FALSE; return(LSMLE.par)})
     if(!LSMLE.par$converged)
     {
       control$start=ponto.inicial.temp
-      LSMLE.par=tryCatch(LSMLE.Beta.Reg(y,x,z,alpha=alpha_tuning[k],link=link,link.phi=link.phi,control = control),error=function(e){LSMLE.par$converged<-FALSE; return(LSMLE.par)})
+      LSMLE.par=tryCatch(LSMLE.fit(y,x,z,alpha=alpha_tuning[k],link=link,link.phi=link.phi,control = control),error=function(e){LSMLE.par$converged<-FALSE; return(LSMLE.par)})
     }
     if(!LSMLE.par$converged)
     {
       control$start=ponto.inicial.robst
-      LSMLE.par=tryCatch(LSMLE.Beta.Reg(y,x,z,alpha=alpha_tuning[k],link=link,link.phi=link.phi,control = control),error=function(e){LSMLE.par$converged<-FALSE; return(LSMLE.par)})
+      LSMLE.par=tryCatch(LSMLE.fit(y,x,z,alpha=alpha_tuning[k],link=link,link.phi=link.phi,control = control),error=function(e){LSMLE.par$converged<-FALSE; return(LSMLE.par)})
     }
     if(LSMLE.par$converged)
     {

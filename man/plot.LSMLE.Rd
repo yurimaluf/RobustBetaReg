@@ -14,12 +14,13 @@
 
 \item{ask}{logical. If TRUE the user is asked before each plot.}
 
-\item{...}{other parameters to be passed through to plotting functions.
-
-#' @examples
-rbr=robustbetareg(I(food/income)~income+persons|1,data=FoodExpenditure,alpha=0.08)
-plot(rbr)}
+\item{...}{other parameters to be passed through to plotting functions.}
 }
 \description{
 Several types of standard diagnostic plots can be produced interactively, involving various kinds of residuals, influence measures, weights etc.
+}
+\examples{
+fit=robustbetareg(I(food/income)~income+persons|1,data=FoodExpenditure,alpha=0.08)
+plot(fit)
+
 }

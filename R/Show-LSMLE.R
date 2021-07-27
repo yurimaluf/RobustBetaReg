@@ -169,9 +169,9 @@ summary.LSMLE=function(obj)
 #' @param ask logical. If TRUE the user is asked before each plot.
 #' @param ... other parameters to be passed through to plotting functions.
 #' 
-#' #' @examples 
-#' rbr=robustbetareg(I(food/income)~income+persons|1,data=FoodExpenditure,alpha=0.08)
-#' plot(rbr)
+#' @examples 
+#' fit=robustbetareg(I(food/income)~income+persons|1,data=FoodExpenditure,alpha=0.08)
+#' plot(fit)
 #' 
 #' @export
 plot.LSMLE=function(object,ask=TRUE,...)
