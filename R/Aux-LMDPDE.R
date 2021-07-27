@@ -34,16 +34,18 @@ Opt.Tuning.LMDPDE=function(y,x,z,link,link.phi,control)
     }
     if(LMDPDE.par$converged)
     {
-      ponto.inicial.temp=Par.q(LMDPDE.par)
+      ponto.inicial.temp=do.call("c",LMDPDE.par$coefficients)
     }
-    if(is.null(LMDPDE.par) || any(is.na(Z.q(LMDPDE.par))) || is.null(SE.q(LMDPDE.par)))
+    
+    if(is.null(LMDPDE.par) || any(is.na(do.call("c",LMDPDE.par$coefficients)/do.call("c",LMDPDE.par$std.error))) || is.null(do.call("c",LMDPDE.par$std.error)))
     {
       sqv.unstable=F
       unstable=T
       break
     }
     LMDPDE.list[[k]]<-LMDPDE.par
-    zq.t<-unname(rbind(zq.t,Z.q(LMDPDE.par)))
+    #zq.t<-unname(rbind(zq.t,Z.q(LMDPDE.par)))
+    zq.t<-unname(rbind(zq.t,do.call("c",LMDPDE.par$coefficients)/do.call("c",LMDPDE.par$std.error)))
   }
   sqv=SQV(zq.t,n,p)
   if(all(sqv<=L))
@@ -70,15 +72,16 @@ Opt.Tuning.LMDPDE=function(y,x,z,link,link.phi,control)
     }
     if(LMDPDE.par$converged)
     {
-      ponto.inicial.temp=Par.q(LMDPDE.par)
+      ponto.inicial.temp=do.call("c",LMDPDE.par$coefficients)
     }
-    if(any(is.na(Z.q(LMDPDE.par))) || is.null(SE.q(LMDPDE.par)))
+    if(any(is.na(do.call("c",LMDPDE.par$coefficients)/do.call("c",LMDPDE.par$std.error))) || is.null(do.call("c",LMDPDE.par$std.error)))
     {
       unstable=T
       break
     }
     LMDPDE.list[[k]]=LMDPDE.par
-    zq.t=unname(rbind(zq.t,Z.q(LMDPDE.par)))
+    #zq.t=unname(rbind(zq.t,Z.q(LMDPDE.par)))
+    zq.t=unname(rbind(zq.t,do.call("c",LMDPDE.par$coefficients)/do.call("c",LMDPDE.par$std.error)))
     sqv=SQV(zq.t,n,p)
     sqv.test=sqv[(k-M):(k-1)]
     if(all(sqv.test<=L) || k==K )
@@ -117,8 +120,8 @@ LMDPDE_Cov_Matrix=function(mu,phi,X,Z,alpha,linkobj)
   K_alpha=exp(lbeta(a_alpha,b_alpha)-(1+alpha)*lbeta(a0,b0))
   K_2alpha=exp(lbeta(a_2alpha,b_2alpha)-(1+2*alpha)*lbeta(a0,b0))
   
-  Tb=diag(inverse(linkobj$linkfun.mu$d.linkfun(mu)))
-  Tg=diag(inverse(linkobj$linkfun.phi$d.linkfun(phi)))
+  Tb=diag((linkobj$linkfun.mu$d.linkfun(mu))^(-1))
+  Tg=diag((linkobj$linkfun.phi$d.linkfun(phi))^(-1))
   
   mu_alpha_star=digamma(a_alpha)-digamma(b_alpha)
   mu_alpha_dagger=digamma(b_alpha)-digamma(a_alpha+b_alpha)
@@ -180,7 +183,7 @@ hatvalues.LMDPDE=function(object)
   y_star=log(y)-log(1-y)
   mu_star=digamma(mu_hat*phi_hat)-digamma((1-mu_hat)*phi_hat)
   V_star=trigamma(mu_hat*phi_hat)+trigamma((1-mu_hat)*phi_hat)
-  W.PHI=diag(x=phi_hat*V_star*(inverse(d.link.mu))^2)
+  W.PHI=diag(x=phi_hat*V_star*((d.link.mu)^(-2)))
   H=sqrt(W.PHI)%*%X%*%solve(t(X)%*%W.PHI%*%X)%*%t(X)%*%sqrt(W.PHI)
   return(diag(H))
 }

@@ -34,16 +34,17 @@ Opt.Tuning.LSMLE=function(y,x,z,link,link.phi,control)
     }
     if(LSMLE.par$converged)
     {
-      ponto.inicial.temp=Par.q(LSMLE.par)
+      ponto.inicial.temp=do.call("c",LSMLE.par$coefficients)
     }
-    if(is.null(LSMLE.par) || any(is.na(Z.q(LSMLE.par))) || is.null(SE.q(LSMLE.par)))
+    if(is.null(LSMLE.par) || any(is.na(do.call("c",LSMLE.par$coefficients)/do.call("c",LSMLE.par$std.error))) || is.null(do.call("c",LSMLE.par$std.error)))
     {
       sqv.unstable=F
       unstable=T
       break
     }
     LSMLE.list[[k]]<-LSMLE.par
-    zq.t<-unname(rbind(zq.t,Z.q(LSMLE.par)))
+    #zq.t<-unname(rbind(zq.t,Z.q(LSMLE.par)))
+    zq.t=unname(rbind(zq.t,do.call("c",LSMLE.par$coefficients)/do.call("c",LSMLE.par$std.error)))
   }
   sqv=SQV(zq.t,n,p)
   if(all(sqv<=L))
@@ -72,15 +73,16 @@ Opt.Tuning.LSMLE=function(y,x,z,link,link.phi,control)
     }
     if(LSMLE.par$converged)
     {
-      ponto.inicial.temp=Par.q(LSMLE.par)  
+      ponto.inicial.temp=do.call("c",LSMLE.par$coefficients)  
     }
-    if(any(is.na(Z.q(LSMLE.par))) || is.null(SE.q(LSMLE.par)))
+    if(any(is.na(do.call("c",LSMLE.par$coefficients)/do.call("c",LSMLE.par$std.error))) || is.null(do.call("c",LSMLE.par$std.error)))
     {
       unstable=T
       break
     }
     LSMLE.list[[k]]=LSMLE.par
-    zq.t=unname(rbind(zq.t,Z.q(LSMLE.par)))
+    #zq.t=unname(rbind(zq.t,Z.q(LSMLE.par)))
+    zq.t=unname(rbind(zq.t,do.call("c",LSMLE.par$coefficients)/do.call("c",LSMLE.par$std.error)))
     sqv=SQV(zq.t,n,p)
     sqv.test=sqv[(k-M):(k-1)]
     if(all(sqv.test<=L) || k==K )
@@ -129,9 +131,9 @@ LSMLE_Cov_Matrix=function(mu,phi,X,Z,alpha,linkobj)
   mu_dagger.k1=digamma(b.k1)-digamma(phi.k1)
   
   #Logit mean link function 
-  Tb=diag(inverse(linkobj$linkfun.mu$d.linkfun(mu)))
+  Tb=diag((linkobj$linkfun.mu$d.linkfun(mu))^(-1))
   #Log precision link funtion
-  Tg=diag(inverse(linkobj$linkfun.phi$d.linkfun(phi)))
+  Tg=diag((linkobj$linkfun.phi$d.linkfun(phi))^(-1))
   
   Phi=diag(phi)
   Q.inv=diag(n)/q
@@ -182,7 +184,7 @@ hatvalues.LSMLE=function(object)
   y_star=log(y)-log(1-y)
   mu_star=digamma(mu_hat*phi_hat)-digamma((1-mu_hat)*phi_hat)
   V_star=trigamma(mu_hat*phi_hat)+trigamma((1-mu_hat)*phi_hat)
-  W.PHI=diag(x=phi_hat*V_star*(inverse(d.link.mu))^2)
+  W.PHI=diag(x=phi_hat*V_star*((d.link.mu)^(-2)))
   H=sqrt(W.PHI)%*%X%*%solve(t(X)%*%W.PHI%*%X)%*%t(X)%*%sqrt(W.PHI)
   return(diag(H))
 }

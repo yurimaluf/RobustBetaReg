@@ -65,6 +65,8 @@ arma::mat Psi_LSMLE_Gamma_Cpp(NumericVector mu_hat, NumericVector phi_hat, Numer
   return(result);
 }
 
+//' @useDynLib RobustBetaReg, .registration=TRUE
+//' @importFrom Rcpp evalCpp
 // [[Rcpp::export]]
 arma::mat Psi_LSMLE_Cpp(arma::vec Theta, NumericVector y, arma::mat X,arma::mat Z, double alpha, StringVector link_mu,StringVector link_phi)
 {
@@ -590,18 +592,6 @@ arma::mat Psi_LMDPDE_Jacobian_C(arma::vec Theta, NumericVector y, arma::mat X,ar
 
 //' @useDynLib RobustBetaReg, .registration=TRUE
 //' @importFrom Rcpp evalCpp
-// [[Rcpp::export]]
-double times4(double x)
-  {
-    return(4*x);
-  }
-
-// [[Rcpp::export]]
-double times3(double x)
-{
-  return(3*x);
-}
-
 // [[Rcpp::export]]
 int OpenMPTest(int x)
 {

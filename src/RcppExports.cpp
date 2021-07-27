@@ -97,28 +97,6 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// times4
-double times4(double x);
-RcppExport SEXP _RobustBetaReg_times4(SEXP xSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< double >::type x(xSEXP);
-    rcpp_result_gen = Rcpp::wrap(times4(x));
-    return rcpp_result_gen;
-END_RCPP
-}
-// times3
-double times3(double x);
-RcppExport SEXP _RobustBetaReg_times3(SEXP xSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< double >::type x(xSEXP);
-    rcpp_result_gen = Rcpp::wrap(times3(x));
-    return rcpp_result_gen;
-END_RCPP
-}
 // OpenMPTest
 int OpenMPTest(int x);
 RcppExport SEXP _RobustBetaReg_OpenMPTest(SEXP xSEXP) {
@@ -139,8 +117,6 @@ static const R_CallMethodDef CallEntries[] = {
     {"_RobustBetaReg_La_Cpp", (DL_FUNC) &_RobustBetaReg_La_Cpp, 8},
     {"_RobustBetaReg_Psi_LMDPDE_Cpp", (DL_FUNC) &_RobustBetaReg_Psi_LMDPDE_Cpp, 7},
     {"_RobustBetaReg_Psi_LMDPDE_Jacobian_C", (DL_FUNC) &_RobustBetaReg_Psi_LMDPDE_Jacobian_C, 7},
-    {"_RobustBetaReg_times4", (DL_FUNC) &_RobustBetaReg_times4, 1},
-    {"_RobustBetaReg_times3", (DL_FUNC) &_RobustBetaReg_times3, 1},
     {"_RobustBetaReg_OpenMPTest", (DL_FUNC) &_RobustBetaReg_OpenMPTest, 1},
     {"testeC", (DL_FUNC) &testeC, 2},
     {NULL, NULL, 0}

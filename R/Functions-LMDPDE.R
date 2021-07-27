@@ -3,7 +3,6 @@
 # Robust Estimation - LMDPDE
 LMDPDE.fit=function(y,x,z,alpha=NULL,link="logit",link.phi="log",control=robustbetareg.control(...), ...)
 {
-  #browser()
   result=theta=list()
   #Arguments Checking
   alpha.optimal=control$alpha.optimal
@@ -38,7 +37,7 @@ LMDPDE.fit=function(y,x,z,alpha=NULL,link="logit",link.phi="log",control=robustb
   
   #Expected Standard Error
   MM=tryCatch(LMDPDE_Cov_Matrix(mu_hat,phi_hat,x,z,alpha=alpha,linkobj=linkobj),error=function(e) NULL)
-  if(is.null(M.LSMLE))
+  if(is.null(MM))
   {
     vcov= std.error.LMDPDE=NULL
   }else{
