@@ -10,6 +10,8 @@ degbeta(y_star, mu, phi, log = FALSE)
 regbeta(n, mu, phi)
 }
 \arguments{
+\item{y_star}{logit transformation of original data (\eqn{y\in(0,1)} and \eqn{y^{*}\in (-\infty,\infty)}).}
+
 \item{mu}{mu parameter.}
 
 \item{phi}{phi parameter.}
@@ -17,8 +19,6 @@ regbeta(n, mu, phi)
 \item{log}{a logical value. If TRUE return the log of density function.}
 
 \item{n}{number of observations.}
-
-\item{y}{logit transformation of original data.}
 }
 \value{
 Return the value of density function or a random sample.

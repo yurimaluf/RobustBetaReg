@@ -1,15 +1,15 @@
+#' @rdname robustbetareg
+#'
 # Robust Estimation - LMDPDE
-LMDPDE.Beta.Reg=function(y,x,z,alpha,link,link.phi,control=robustbetareg.control(...), ...)
+LMDPDE.fit=function(y,x,z,alpha=NULL,link="logit",link.phi="log",control=robustbetareg.control(...), ...)
 {
   #browser()
   result=theta=list()
   #Arguments Checking
   alpha.optimal=control$alpha.optimal
   start_theta=control$start
-  if(!missing(alpha) & !is.null(alpha)){alpha.optimal=FALSE}
+  if(!is.null(alpha)){alpha.optimal=FALSE}
   if(is.null(alpha) & alpha.optimal==FALSE){alpha=0}
-  if(missing(link)){link="logit"}
-  if(missing(link.phi)){link.phi="log"}
   linkobj=make.link(link.mu = link,link.phi = link.phi)
   k=ncol(x)
   m=ncol(z)
@@ -17,45 +17,35 @@ LMDPDE.Beta.Reg=function(y,x,z,alpha,link,link.phi,control=robustbetareg.control
   {
     return(Opt.Tuning.LMDPDE(y,x,z,link,link.phi,control))
   }
-  if(is.null(start_theta) || missing(alpha))
+  if(is.null(start_theta))
   {
-    if(is.null(start_theta) || missing(alpha))
-    {
-      mle=tryCatch(suppressWarnings(betareg.fit(x,y,z,link=link,link.phi = link.phi)),error=function(e) NULL)
-      start_theta=as.numeric(do.call("c",mle$coefficients))
-    }
+    mle=tryCatch(suppressWarnings(betareg.fit(x,y,z,link=link,link.phi = link.phi)),error=function(e) NULL)
+    start_theta=as.numeric(do.call("c",mle$coefficients))
   }
-  if(missing(alpha))
+  #Point Estimation
+  theta=tryCatch(nleqslv(start_theta,Psi_LMDPDE_Cpp,jac=Psi_LMDPDE_Jacobian_C,y=y,X=x,Z=z,alpha=alpha,link_mu=link,link_phi=link.phi,control=list(ftol=control$tolerance,maxit=control$maxit),method="Newton",jacobian = T),error=function(e){
+  theta$msg<-e$message;return(theta)})
+  theta$converged=F
+  if(all(abs(theta$fvec)<control$tolerance) & !all(theta$fvec==0) & all(diag(theta$jac)<0)){theta$converged=T}
+  
+  #Predict values
+  beta=theta$x[1:k]
+  gamma=theta$x[seq.int(length.out = m) + k]
+  coefficients = list(mean = beta, precision = gamma)
+  eta=x%*%beta
+  mu_hat=linkobj$linkfun.mu$inv.link(eta)
+  phi_hat=linkobj$linkfun.phi$inv.link(z%*%gamma)
+  
+  #Expected Standard Error
+  MM=tryCatch(LMDPDE_Cov_Matrix(mu_hat,phi_hat,x,z,alpha=alpha,linkobj=linkobj),error=function(e) NULL)
+  if(is.null(M.LSMLE))
   {
-    theta$x=as.numeric(c(mle$coefficients$mean,mle$coefficients$precision))
-    alpha=0
-    beta=theta$x[1:k]
-    gamma=theta$x[seq.int(length.out = m) + k]
-    coefficients = list(mean = beta, precision = gamma)
-    eta=x%*%beta
-    mu_hat=linkobj$linkfun.mu$inv.link(eta)
-    phi_hat=linkobj$linkfun.phi$inv.link(z%*%gamma)
-    theta$inter=NULL
-    theta$converged=mle$converged
-    theta$fvec=Psi_LMDPDE(theta$x,y=y,X=x,Z=z,alpha=0,linkobj=linkobj)
-    vcov=mle$vcov
-    std.error.LMDPDE=sqrt(diag(vcov))
+    vcov= std.error.LMDPDE=NULL
   }else{
-    #Point Estimation
-    theta=Robst.LMDPDE.Beta.Reg(y,x,z,start_theta=start_theta,alpha=alpha,linkobj=linkobj,tolerance=control$tolerance,maxit=control$maxit)
-    #Predict values
-    beta=theta$x[1:k]
-    gamma=theta$x[seq.int(length.out = m) + k]
-    coefficients = list(mean = beta, precision = gamma)
-    eta=x%*%beta
-    mu_hat=linkobj$linkfun.mu$inv.link(eta)
-    phi_hat=linkobj$linkfun.phi$inv.link(z%*%gamma)
-    #Expected Standard Error
-    MM=LMDPDE_Cov_Matrix(mu_hat,phi_hat,x,z,alpha=alpha,linkobj=linkobj)
     vcov=MM$Cov
     std.error.LMDPDE=MM$Std.Error
   }
-  
+
   #Register of output values 
   y_star=log(y)-log(1-y)
   str1=str2=NULL
@@ -71,10 +61,7 @@ LMDPDE.Beta.Reg=function(y,x,z,alpha,link,link.phi,control=robustbetareg.control
   result$start=start_theta #Alterar caso optar por duas tentativas de ponto inicial
   result$weights=degbeta(y_star,mu_hat,phi_hat)^(alpha)#Weights
   result$Tuning=alpha
-  #result$Psi.Value=theta$fvec
   result$residuals=sweighted2_res(mu_hat,phi_hat,y=y,X=x,linkobj = linkobj)
-  #result$model=list(mean = x, precision = z)
-  #result$y=y
   result$link=link
   result$link.phi=link.phi
   result$Optimal.Tuning=alpha.optimal

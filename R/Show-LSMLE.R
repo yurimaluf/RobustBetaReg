@@ -165,7 +165,7 @@ summary.LSMLE=function(obj)
 #' 
 #' 
 #' 
-#' @param object fitted model object of class "LMDPDE" or "LSMLE".
+#' @param object fitted model object of class  "LSMLE" or "LMDPDE".
 #' @param ask logical. If TRUE the user is asked before each plot.
 #' @param ... other parameters to be passed through to plotting functions.
 #' 

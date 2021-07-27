@@ -10,7 +10,7 @@
 \method{plot}{LSMLE}(object, ask = TRUE, ...)
 }
 \arguments{
-\item{object}{fitted model object of class "LMDPDE" or "LSMLE".}
+\item{object}{fitted model object of class  "LSMLE" or "LMDPDE".}
 
 \item{ask}{logical. If TRUE the user is asked before each plot.}
 

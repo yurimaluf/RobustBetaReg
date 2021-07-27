@@ -1,15 +1,17 @@
+#' @rdname robustbetareg
+#' 
+#' @param x,z  numeric regressor matrix for mean and precision model respectively, defaulting to an intercept only.
+#' 
 # Robust Estimation - LSMLE
-LSMLE.Beta.Reg=function(y,x,z,alpha,link,link.phi,control=robustbetareg.control(...),...)
+LSMLE.fit=function(y,x,z,alpha=NULL,link="logit",link.phi="log",control=robustbetareg.control(...),...)
 {
   #options(warn = 2) #Convert warnings in errors
   result=theta=list()
   #Arguments Checking
   alpha.optimal=control$alpha.optimal
   start_theta=control$start
-  if(!missing(alpha) & !is.null(alpha)){alpha.optimal=FALSE}
+  if(!is.null(alpha)){alpha.optimal=FALSE}
   if(is.null(alpha) & alpha.optimal==FALSE){alpha=0}
-  if(missing(link)){link="logit"}
-  if(missing(link.phi)){link.phi="log"}
   linkobj=make.link(link.mu = link,link.phi = link.phi)
   k=ncol(x)
   m=ncol(z)
@@ -17,50 +19,36 @@ LSMLE.Beta.Reg=function(y,x,z,alpha,link,link.phi,control=robustbetareg.control(
   {
     return(Opt.Tuning.LSMLE(y,x,z,link,link.phi,control))
   }
-  if(is.null(start_theta) || missing(alpha))
+  if(is.null(start_theta))
   {
     mle=tryCatch(suppressWarnings(betareg.fit(x,y,z,link=link,link.phi = link.phi)),error=function(e) NULL)
     start_theta=as.numeric(do.call("c",mle$coefficients))
   }
-  if(missing(alpha))
+  #Point Estimation
+  q=1-alpha
+  theta=tryCatch(nleqslv(start_theta,Psi_LSMLE_Cpp,jac=Psi_LSMLE_Jacobian_C,y=y,X=x,Z=z,alpha=alpha,link_mu=link,link_phi=link.phi,control=list(ftol=control$tolerance,maxit=control$maxit),method="Newton",jacobian = T),error=function(e){
+  theta$msg<-e$message;return(theta)})
+  theta$converged=F
+  if(all(abs(theta$fvec)<control$tolerance) & !all(theta$fvec==0) & all(diag(theta$jac)<0)){theta$converged=T}
+    
+  #Predict values
+  beta=theta$x[1:k]
+  gamma=theta$x[seq.int(length.out = m) + k]
+  coefficients = list(mean = beta, precision = gamma)
+  eta=x%*%beta
+  mu_hat=linkobj$linkfun.mu$inv.link(eta)
+  phi_hat=linkobj$linkfun.phi$inv.link(z%*%gamma)
+  
+  #Expected Standard Error
+  M.LSMLE=tryCatch(LSMLE_Cov_Matrix(mu_hat,phi_hat,x,z,alpha=alpha,linkobj=linkobj),error=function(e) NULL)
+  if(is.null(M.LSMLE))
   {
-    theta$x=as.numeric(do.call("c",mle$coefficients))
-    alpha=0
-    q=1-alpha
-    alpha=0
-    beta=theta$x[1:k]
-    gamma=theta$x[seq.int(length.out = m) + k]
-    coefficients = list(mean = beta, precision = gamma)
-    eta=x%*%beta
-    mu_hat=linkobj$linkfun.mu$inv.link(eta)
-    phi_hat=linkobj$linkfun.phi$inv.link(z%*%gamma)
-    theta$inter=NULL
-    theta$converged=mle$converged
-    theta$fvec=Psi_LSMLE(theta$x,y=y,X=x,Z=z,alpha=0,linkobj=linkobj)
-    vcov=mle$vcov
-    std.error.LSMLE=sqrt(diag(vcov))
+    vcov=std.error.LSMLE=NULL
   }else{
-    #Point Estimation
-    q=1-alpha
-    #browser()
-    theta=Robst.LSMLE.Beta.Reg(y,x,z,start_theta=start_theta,alpha=alpha,linkobj=linkobj,tolerance=control$tolerance,maxit=control$maxit)
-    #Predict values
-    beta=theta$x[1:k]
-    gamma=theta$x[seq.int(length.out = m) + k]
-    coefficients = list(mean = beta, precision = gamma)
-    eta=x%*%beta
-    mu_hat=linkobj$linkfun.mu$inv.link(eta)
-    phi_hat=linkobj$linkfun.phi$inv.link(z%*%gamma)
-    #Expected Standard Error
-    M.LSMLE=tryCatch(LSMLE_Cov_Matrix(mu_hat,phi_hat,x,z,alpha=alpha,linkobj=linkobj),error=function(e) NULL)
-    if(is.null(M.LSMLE))
-    {
-      vcov=std.error.LSMLE=NULL
-    }else{
-      vcov=M.LSMLE$Cov
-      std.error.LSMLE=M.LSMLE$Std.Error
-    }
+    vcov=M.LSMLE$Cov
+    std.error.LSMLE=M.LSMLE$Std.Error
   }
+  
   #Register of output values 
   y_star=log(y)-log(1-y)
   str1=str2=NULL
