@@ -12,7 +12,8 @@ LSMLE.fit=function(y,x,z,alpha=NULL,link="logit",link.phi="log",control=robustbe
   start_theta=control$start
   if(!is.null(alpha)){alpha.optimal=FALSE}
   if(is.null(alpha) & alpha.optimal==FALSE){alpha=0}
-  linkobj=make.link(link.mu = link,link.phi = link.phi)
+  linkobj=set.link(link.mu = link,link.phi = link.phi)
+  #linkobj=make.link(link.mu = link,link.phi = link.phi)
   k=ncol(x)
   m=ncol(z)
   if(alpha.optimal)
@@ -197,7 +198,8 @@ SaddlepointTest.LSMLE=function(object,FUN=NULL,...,thrd)
   l0=rep(0,m+k)
   B_0=G_0=general=NULL
   N=object$n
-  linkobj=make.link(object$link,object$link.phi)
+  linkobj=set.link(object$link,object$link.phi)
+  #linkobj=make.link(object$link,object$link.phi)
   alpha=object$Tuning
   if(is.null(FUN))
   {
@@ -208,7 +210,6 @@ SaddlepointTest.LSMLE=function(object,FUN=NULL,...,thrd)
     ind_free=(m+1):(m+k)
     h_beta=tryCatch(suppressWarnings(stats::optim(par=gamma_hat,sup_K_psi_C,ind_free=ind_free,ind_fix=ind_fix,eta_0=beta_hat,Beta=beta_hat,Gamma=gamma_hat,X=X,Z=Z,alpha=alpha,linkobj=linkobj,thrd=thrd,method="BFGS")$value),error=function(e) NULL)
     if(is.null(h_beta)){msg="The test does not reach the convergence"}
-    #h_beta=stats::optim(par=gamma_hat,sup_K_psi_C,ind_free=ind_free,ind_fix=ind_fix,eta_0=beta_hat,Beta=beta_hat,Gamma=gamma_hat,X=X,Z=Z,alpha=alpha,linkobj=linkobj,method="BFGS")$value
     #Result Register
     result$SaddlePointTest=as.numeric(2*N*h_beta)
     result$df=m
@@ -225,7 +226,6 @@ SaddlepointTest.LSMLE=function(object,FUN=NULL,...,thrd)
     {
       h_beta=tryCatch(suppressWarnings(stats::optim(par=c(beta_hat,gamma_hat)[ind_free],sup_K_psi_C,ind_free=ind_free,ind_fix=ind_fix,eta_0=eta_0[ind_fix],Beta=beta_hat,Gamma=gamma_hat,X=X,Z=Z,alpha=alpha,linkobj=linkobj,thrd=thrd,method="BFGS")$value),error=function(e) NULL)
       if(is.null(h_beta)){msg="The test does not reach the convergence"}
-      #h_beta=stats::optim(par=c(beta_hat,gamma_hat)[ind_free],sup_K_psi_C,ind_free=ind_free,ind_fix=ind_fix,eta_0=eta_0[ind_fix],Beta=beta_hat,Gamma=gamma_hat,X=X,Z=Z,alpha=alpha,linkobj=linkobj,method="BFGS")$value
       df=length(ind_fix)
     }else{
       B_0=eta_0[1:m]
@@ -233,7 +233,6 @@ SaddlepointTest.LSMLE=function(object,FUN=NULL,...,thrd)
       df=m+k
       h_beta=tryCatch(suppressWarnings(-(stats::nlminb(l0,K2_psi_C,Beta=beta_hat,Gamma=gamma_hat,Beta_0=B_0,Gamma_0=G_0,X=X,Z=Z,alpha=alpha,linkobj=linkobj,thrd=thrd))$objective),error=function(e) NULL)
       if(is.null(h_beta)){msg="The test does not reach the convergence"}
-      #h_beta=-(stats::nlminb(l0,K2_psi_C,Beta=beta_hat,Gamma=gamma_hat,Beta_0=B_0,Gamma_0=G_0,X=X,Z=Z,alpha=alpha,linkobj=linkobj))$objective
     }
     #Result Register
     result$SaddlePointTest=as.numeric(2*N*h_beta)
@@ -339,7 +338,8 @@ residuals.LSMLE=function(object,type=c("sweighted2","pearson","weighted","sweigh
   y=object$y
   x=object$model$mean
   z=object$model$precision
-  linkobj=make.link(link.mu=object$link,link.phi=object$link.phi)
+  linkobj=set.link(link.mu=object$link,link.phi=object$link.phi)
+  #linkobj=make.link(link.mu=object$link,link.phi=object$link.phi)
   mu.predict=object$fitted.values$mu.predict
   phi.predict=object$fitted.values$phi.predict
   if(type=="sweighted2")

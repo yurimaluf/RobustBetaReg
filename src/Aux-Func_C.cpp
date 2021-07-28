@@ -593,11 +593,11 @@ arma::mat Psi_LMDPDE_Jacobian_C(arma::vec Theta, NumericVector y, arma::mat X,ar
 //' @useDynLib RobustBetaReg, .registration=TRUE
 //' @importFrom Rcpp evalCpp
 // [[Rcpp::export]]
-int OpenMPTest(int x)
+int OpenMPTest(int numThrd)
 {
   int j=0;
 #if _OPENMP
-  omp_set_num_threads(x);//define number of threads 
+  omp_set_num_threads(numThrd);//define number of threads 
 #endif   
   #pragma omp parallel firstprivate(j)
   {

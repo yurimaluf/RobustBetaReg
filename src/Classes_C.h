@@ -206,7 +206,7 @@ NumericVector Link::d2_linkphi(NumericVector phi)
   }
   if(LinkPhi[0]=="sqrt")
   {
-    return(-0.25*pow(phi,3/2));
+    return(-0.25*pow(phi,-3/2));
   }
   return(0);
 }

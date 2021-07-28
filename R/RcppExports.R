@@ -25,7 +25,7 @@ Psi_LMDPDE_Jacobian_C <- function(Theta, y, X, Z, alpha, link_mu, link_phi) {
 
 #' @useDynLib RobustBetaReg, .registration=TRUE
 #' @importFrom Rcpp evalCpp
-OpenMPTest <- function(x) {
-    .Call(`_RobustBetaReg_OpenMPTest`, x)
+OpenMPTest <- function(numThrd) {
+    .Call(`_RobustBetaReg_OpenMPTest`, numThrd)
 }
 

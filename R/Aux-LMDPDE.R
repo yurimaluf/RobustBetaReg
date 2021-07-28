@@ -120,7 +120,13 @@ LMDPDE_Cov_Matrix=function(mu,phi,X,Z,alpha,linkobj)
   K_alpha=exp(lbeta(a_alpha,b_alpha)-(1+alpha)*lbeta(a0,b0))
   K_2alpha=exp(lbeta(a_2alpha,b_2alpha)-(1+2*alpha)*lbeta(a0,b0))
   
+  #mean link function 
+  browser()
+  linkobj2=set.link()
+  Tb2=(linkobj2$linkfun.mu$mu.eta(linkobj2$linkfun.mu$linkfun(mu)))
+  
   Tb=diag((linkobj$linkfun.mu$d.linkfun(mu))^(-1))
+  #precision link funtion
   Tg=diag((linkobj$linkfun.phi$d.linkfun(phi))^(-1))
   
   mu_alpha_star=digamma(a_alpha)-digamma(b_alpha)
@@ -177,7 +183,8 @@ hatvalues.LMDPDE=function(object)
   phi_hat=object$fitted.values$phi.predict
   y=object$y
   X=object$model$mean
-  linkobj=make.link(link.mu=object$link,link.phi=object$link.phi)
+  linkobj=set.link(link.mu=object$link,link.phi=object$link.phi)
+  #linkobj=make.link(link.mu=object$link,link.phi=object$link.phi)
   d.link.mu=linkobj$linkfun.mu$d.linkfun(mu_hat)
   
   y_star=log(y)-log(1-y)

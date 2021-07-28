@@ -9,7 +9,8 @@ LMDPDE.fit=function(y,x,z,alpha=NULL,link="logit",link.phi="log",control=robustb
   start_theta=control$start
   if(!is.null(alpha)){alpha.optimal=FALSE}
   if(is.null(alpha) & alpha.optimal==FALSE){alpha=0}
-  linkobj=make.link(link.mu = link,link.phi = link.phi)
+  linkobj=set.link(link.mu = link,link.phi = link.phi)
+  #linkobj=make.link(link.mu = link,link.phi = link.phi)
   k=ncol(x)
   m=ncol(z)
   if(alpha.optimal)
@@ -245,7 +246,8 @@ residuals.LMDPDE=function(object,type=c("sweighted2","pearson","weighted","sweig
   y=object$y
   x=object$model$mean
   z=object$model$precision
-  linkobj=make.link(link.mu=object$link,link.phi=object$link.phi)
+  linkobj=set.link(link.mu=object$link,link.phi=object$link.phi)
+  #linkobj=make.link(link.mu=object$link,link.phi=object$link.phi)
   mu.predict=object$fitted.values$mu.predict
   phi.predict=object$fitted.values$phi.predict
   if(type=="sweighted2")
