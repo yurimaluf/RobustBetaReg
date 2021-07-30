@@ -97,6 +97,19 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// SQV_Cpp
+NumericVector SQV_Cpp(arma::mat zq, double n, double p);
+RcppExport SEXP _RobustBetaReg_SQV_Cpp(SEXP zqSEXP, SEXP nSEXP, SEXP pSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< arma::mat >::type zq(zqSEXP);
+    Rcpp::traits::input_parameter< double >::type n(nSEXP);
+    Rcpp::traits::input_parameter< double >::type p(pSEXP);
+    rcpp_result_gen = Rcpp::wrap(SQV_Cpp(zq, n, p));
+    return rcpp_result_gen;
+END_RCPP
+}
 // OpenMPTest
 int OpenMPTest(int numThrd);
 RcppExport SEXP _RobustBetaReg_OpenMPTest(SEXP numThrdSEXP) {
@@ -109,30 +122,30 @@ BEGIN_RCPP
 END_RCPP
 }
 
-RcppExport SEXP C_cauchit_d2eta_dmu2(SEXP);
-RcppExport SEXP C_cauchit_deta_dmu(SEXP);
-RcppExport SEXP C_cauchit_link(SEXP);
-RcppExport SEXP C_cauchit_linkinv(SEXP);
-RcppExport SEXP C_cloglog_d2eta_dmu2(SEXP);
-RcppExport SEXP C_cloglog_deta_dmu(SEXP);
-RcppExport SEXP C_cloglog_link(SEXP);
-RcppExport SEXP C_cloglog_linkinv(SEXP);
-RcppExport SEXP C_log_d2eta_dmu2(SEXP);
-RcppExport SEXP C_log_deta_dmu(SEXP);
-RcppExport SEXP C_logit_d2eta_dmu2(SEXP);
-RcppExport SEXP C_logit_deta_dmu(SEXP);
-RcppExport SEXP C_logit_link(SEXP);
-RcppExport SEXP C_logit_linkinv(SEXP);
-RcppExport SEXP C_log_link(SEXP);
-RcppExport SEXP C_log_linkinv(SEXP);
-RcppExport SEXP C_loglog_d2eta_dmu2(SEXP);
-RcppExport SEXP C_loglog_deta_dmu(SEXP);
-RcppExport SEXP C_loglog_link(SEXP);
-RcppExport SEXP C_loglog_linkinv(SEXP);
-RcppExport SEXP C_sqrt_d2eta_dmu2(SEXP);
-RcppExport SEXP C_sqrt_deta_dmu(SEXP);
-RcppExport SEXP C_sqrt_link(SEXP);
-RcppExport SEXP C_sqrt_linkinv(SEXP);
+RcppExport SEXP C_cauchit_d2eta_dmu2(SEXP, SEXP);
+RcppExport SEXP C_cauchit_deta_dmu(SEXP, SEXP);
+RcppExport SEXP C_cauchit_link(SEXP, SEXP);
+RcppExport SEXP C_cauchit_linkinv(SEXP, SEXP);
+RcppExport SEXP C_cloglog_d2eta_dmu2(SEXP, SEXP);
+RcppExport SEXP C_cloglog_deta_dmu(SEXP, SEXP);
+RcppExport SEXP C_cloglog_link(SEXP, SEXP);
+RcppExport SEXP C_cloglog_linkinv(SEXP, SEXP);
+RcppExport SEXP C_log_d2eta_dmu2(SEXP, SEXP);
+RcppExport SEXP C_log_deta_dmu(SEXP, SEXP);
+RcppExport SEXP C_logit_d2eta_dmu2(SEXP, SEXP);
+RcppExport SEXP C_logit_deta_dmu(SEXP, SEXP);
+RcppExport SEXP C_logit_link(SEXP, SEXP);
+RcppExport SEXP C_logit_linkinv(SEXP, SEXP);
+RcppExport SEXP C_log_link(SEXP, SEXP);
+RcppExport SEXP C_log_linkinv(SEXP, SEXP);
+RcppExport SEXP C_loglog_d2eta_dmu2(SEXP, SEXP);
+RcppExport SEXP C_loglog_deta_dmu(SEXP, SEXP);
+RcppExport SEXP C_loglog_link(SEXP, SEXP);
+RcppExport SEXP C_loglog_linkinv(SEXP, SEXP);
+RcppExport SEXP C_sqrt_d2eta_dmu2(SEXP, SEXP);
+RcppExport SEXP C_sqrt_deta_dmu(SEXP, SEXP);
+RcppExport SEXP C_sqrt_link(SEXP, SEXP);
+RcppExport SEXP C_sqrt_linkinv(SEXP, SEXP);
 RcppExport SEXP testeC(SEXP, SEXP);
 
 static const R_CallMethodDef CallEntries[] = {
@@ -141,31 +154,32 @@ static const R_CallMethodDef CallEntries[] = {
     {"_RobustBetaReg_La_Cpp", (DL_FUNC) &_RobustBetaReg_La_Cpp, 8},
     {"_RobustBetaReg_Psi_LMDPDE_Cpp", (DL_FUNC) &_RobustBetaReg_Psi_LMDPDE_Cpp, 7},
     {"_RobustBetaReg_Psi_LMDPDE_Jacobian_C", (DL_FUNC) &_RobustBetaReg_Psi_LMDPDE_Jacobian_C, 7},
+    {"_RobustBetaReg_SQV_Cpp", (DL_FUNC) &_RobustBetaReg_SQV_Cpp, 3},
     {"_RobustBetaReg_OpenMPTest", (DL_FUNC) &_RobustBetaReg_OpenMPTest, 1},
-    {"C_cauchit_d2eta_dmu2", (DL_FUNC) &C_cauchit_d2eta_dmu2, 1},
-    {"C_cauchit_deta_dmu",   (DL_FUNC) &C_cauchit_deta_dmu,   1},
-    {"C_cauchit_link",       (DL_FUNC) &C_cauchit_link,       1},
-    {"C_cauchit_linkinv",    (DL_FUNC) &C_cauchit_linkinv,    1},
-    {"C_cloglog_d2eta_dmu2", (DL_FUNC) &C_cloglog_d2eta_dmu2, 1},
-    {"C_cloglog_deta_dmu",   (DL_FUNC) &C_cloglog_deta_dmu,   1},
-    {"C_cloglog_link",       (DL_FUNC) &C_cloglog_link,       1},
-    {"C_cloglog_linkinv",    (DL_FUNC) &C_cloglog_linkinv,    1},
-    {"C_log_d2eta_dmu2",     (DL_FUNC) &C_log_d2eta_dmu2,     1},
-    {"C_log_deta_dmu",       (DL_FUNC) &C_log_deta_dmu,       1},
-    {"C_logit_d2eta_dmu2",   (DL_FUNC) &C_logit_d2eta_dmu2,   1},
-    {"C_logit_deta_dmu",     (DL_FUNC) &C_logit_deta_dmu,     1},
-    {"C_logit_link",         (DL_FUNC) &C_logit_link,         1},
-    {"C_logit_linkinv",      (DL_FUNC) &C_logit_linkinv,      1},
-    {"C_log_link",           (DL_FUNC) &C_log_link,           1},
-    {"C_log_linkinv",        (DL_FUNC) &C_log_linkinv,        1},
-    {"C_loglog_d2eta_dmu2",  (DL_FUNC) &C_loglog_d2eta_dmu2,  1},
-    {"C_loglog_deta_dmu",    (DL_FUNC) &C_loglog_deta_dmu,    1},
-    {"C_loglog_link",        (DL_FUNC) &C_loglog_link,        1},
-    {"C_loglog_linkinv",     (DL_FUNC) &C_loglog_linkinv,     1},
-    {"C_sqrt_d2eta_dmu2",    (DL_FUNC) &C_sqrt_d2eta_dmu2,    1},
-    {"C_sqrt_deta_dmu",      (DL_FUNC) &C_sqrt_deta_dmu,      1},
-    {"C_sqrt_link",          (DL_FUNC) &C_sqrt_link,          1},
-    {"C_sqrt_linkinv",       (DL_FUNC) &C_sqrt_linkinv,       1},
+    {"C_cauchit_d2eta_dmu2", (DL_FUNC) &C_cauchit_d2eta_dmu2, 2},
+    {"C_cauchit_deta_dmu",   (DL_FUNC) &C_cauchit_deta_dmu,   2},
+    {"C_cauchit_link",       (DL_FUNC) &C_cauchit_link,       2},
+    {"C_cauchit_linkinv",    (DL_FUNC) &C_cauchit_linkinv,    2},
+    {"C_cloglog_d2eta_dmu2", (DL_FUNC) &C_cloglog_d2eta_dmu2, 2},
+    {"C_cloglog_deta_dmu",   (DL_FUNC) &C_cloglog_deta_dmu,   2},
+    {"C_cloglog_link",       (DL_FUNC) &C_cloglog_link,       2},
+    {"C_cloglog_linkinv",    (DL_FUNC) &C_cloglog_linkinv,    2},
+    {"C_log_d2eta_dmu2",     (DL_FUNC) &C_log_d2eta_dmu2,     2},
+    {"C_log_deta_dmu",       (DL_FUNC) &C_log_deta_dmu,       2},
+    {"C_logit_d2eta_dmu2",   (DL_FUNC) &C_logit_d2eta_dmu2,   2},
+    {"C_logit_deta_dmu",     (DL_FUNC) &C_logit_deta_dmu,     2},
+    {"C_logit_link",         (DL_FUNC) &C_logit_link,         2},
+    {"C_logit_linkinv",      (DL_FUNC) &C_logit_linkinv,      2},
+    {"C_log_link",           (DL_FUNC) &C_log_link,           2},
+    {"C_log_linkinv",        (DL_FUNC) &C_log_linkinv,        2},
+    {"C_loglog_d2eta_dmu2",  (DL_FUNC) &C_loglog_d2eta_dmu2,  2},
+    {"C_loglog_deta_dmu",    (DL_FUNC) &C_loglog_deta_dmu,    2},
+    {"C_loglog_link",        (DL_FUNC) &C_loglog_link,        2},
+    {"C_loglog_linkinv",     (DL_FUNC) &C_loglog_linkinv,     2},
+    {"C_sqrt_d2eta_dmu2",    (DL_FUNC) &C_sqrt_d2eta_dmu2,    2},
+    {"C_sqrt_deta_dmu",      (DL_FUNC) &C_sqrt_deta_dmu,      2},
+    {"C_sqrt_link",          (DL_FUNC) &C_sqrt_link,          2},
+    {"C_sqrt_linkinv",       (DL_FUNC) &C_sqrt_linkinv,       2},
     {"testeC",               (DL_FUNC) &testeC,               2},
     {NULL, NULL, 0}
 };

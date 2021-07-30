@@ -10,7 +10,6 @@ LMDPDE.fit=function(y,x,z,alpha=NULL,link="logit",link.phi="log",control=robustb
   if(!is.null(alpha)){alpha.optimal=FALSE}
   if(is.null(alpha) & alpha.optimal==FALSE){alpha=0}
   linkobj=set.link(link.mu = link,link.phi = link.phi)
-  #linkobj=make.link(link.mu = link,link.phi = link.phi)
   k=ncol(x)
   m=ncol(z)
   if(alpha.optimal)
@@ -103,7 +102,6 @@ robustbetareg.control.LMDPDE=function(object)
 WaldTypeTest.LMDPDE=function(object,FUN,...)
 {
   general=FALSE
-  #browser()
   if(missing(FUN)){general=T}
   if(!object$converged){stop(paste("There is no convergence in the model",deparse(substitute(object))))}
   cl = match.call()
@@ -182,7 +180,6 @@ plotenvelope.LMDPDE=function(object,type=c("sweighted2","pearson","weighted","sw
   type = match.arg(type)
   ylim.boolean=hasArg(ylim)
   arg=list(...)
-  #par(list(...))
   limit=FALSE
   y.sim=ResEnvelop=NULL
   link=object$link
@@ -222,7 +219,6 @@ plotenvelope.LMDPDE=function(object,type=c("sweighted2","pearson","weighted","sw
     ylim <- range(Envelope[1,],Envelope[2,],Envelope[3,],residual)
     arg$ylim=ylim
   }
-  #browser()
   par(mar=c(5.0,5.0,4.0,2.0),pch=16, cex=1.0, cex.lab=1.0, cex.axis=1.0, cex.main=1.5)
   ARG=append(list(y=residual,main="Envelope Plot", xlab="Normal quantiles",ylab="Residuals"),arg)
   do.call(qqnorm,ARG)
@@ -247,7 +243,6 @@ residuals.LMDPDE=function(object,type=c("sweighted2","pearson","weighted","sweig
   x=object$model$mean
   z=object$model$precision
   linkobj=set.link(link.mu=object$link,link.phi=object$link.phi)
-  #linkobj=make.link(link.mu=object$link,link.phi=object$link.phi)
   mu.predict=object$fitted.values$mu.predict
   phi.predict=object$fitted.values$phi.predict
   if(type=="sweighted2")

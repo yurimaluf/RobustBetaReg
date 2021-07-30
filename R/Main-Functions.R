@@ -83,18 +83,25 @@ robustbetareg = function(formula,data,alpha,type=c("LSMLE","LMDPDE"),link = c("l
   y=model.response(mf1)
   x=model.matrix(formula,data=mf1,rhs = 1L)
   z=model.matrix(formula,data=mf1,rhs = 2L)
+  if(simple_formula){colnames(z)[1]="(Phi)"}
+  
+  mt = terms(formula, data = data)
+  mtX = terms(formula, data = data, rhs = 1L)
+  mtZ = delete.response(terms(formula, data = data, rhs = 2L))
+  
   #Tratamento erro modelo
   if(length(y) < 1){stop("empty model")} 
   if(!(min(y) > 0 & max(y) < 1)){stop("invalid dependent variable, all observations must be in (0, 1)")} 
   if(!is.null(control$start) & (ncol(x)+ncol(z))!=length(control$start) ){stop("Invalid initial starting point")}
   if(!is.null(alpha)){if(alpha < 0 || alpha > 1){stop("invalid tuning constant, the value must be in [0, 1)")}}
+  if(!is.null(link.phi)){if(link.phi=="identity" & !simple_formula){link.phi="log";warning("Non suitable precision link function, log link used instead")}}
   
   link = match.arg(link)
   if(is.null(link.phi))
   {
-    link.phi <- if(simple_formula){"identity"}
+    link.phi = if(simple_formula){"identity"}
     else "log" 
-  } 
+  }
   if(is.null(control$start))
   {
     est.mle=suppressWarnings(betareg(oformula,data,link=link,link.phi = link.phi))
@@ -110,7 +117,8 @@ robustbetareg = function(formula,data,alpha,type=c("LSMLE","LMDPDE"),link = c("l
   }
   if(yy){result$y=y}
   if(model){result$model=list(mean = x, precision = z)}
-  result$call <- cl
+  result$terms=list(mean = mtX, precision = mtZ, full = mt)
+  result$call = cl
   result$formula=as.formula(formula)
   return(result)
 }

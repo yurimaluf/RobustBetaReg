@@ -1,58 +1,58 @@
 #' @export
-print.LSMLE=function(obj)
+print.LSMLE=function(object)
 {
   cat("Call: \n")      
-  print(obj$call)
+  print(object$call)
   cat("\n")
-  cat("Coefficients (mean model with",obj$link,"link):\n")
-  print(obj$coefficients$mean)
+  cat("Coefficients (mean model with",object$link,"link):\n")
+  print(object$coefficients$mean)
   cat("\n")
-  cat("Coefficients (precision model with",obj$link.phi,"link):\n")
-  print(obj$coefficients$precision)
-  if(!obj$converged)
+  cat("Coefficients (precision model with",object$link.phi,"link):\n")
+  print(object$coefficients$precision)
+  if(!object$converged)
   {
     cat("\n")
     cat("The algorithm did not reach the convergence.\n")
   }
   cat("------\n")
-  cat(paste0("Tuning value: alpha=",obj$Tuning))
+  cat(paste0("Tuning value: alpha=",object$Tuning))
 }
 
 #' @export
-print.WaldTest_LSMLE=function(obj)
+print.WaldTest_LSMLE=function(object)
 {
-  if(obj$general)
+  if(object$general)
   {
     #browser()
     cat("-- Wald Type Test -- \n")
-    if(!is.null(obj$beta.wald))
+    if(!is.null(object$beta.wald))
     {
-      p.valor=obj$beta.wald$pValue
+      p.valor=object$beta.wald$pValue
       obs=star.obs(p.valor)
       if(p.valor<=2e-16){p.valor="<2e-16"}
-      if(p.valor>2e-16){p.valor=paste0("=",obj$beta.wald$pValue)}
+      if(p.valor>2e-16){p.valor=paste0("=",object$beta.wald$pValue)}
       
       cat("Null Hypothesis: all mean coefficients equal to zero \n")  
-      cat(paste0("Value=",formatC(obj$beta.wald$W.alpha),", df=",obj$beta.wald$df,", p-Value",p.valor,obs,"\n"))  
+      cat(paste0("Value=",formatC(object$beta.wald$W.alpha),", df=",object$beta.wald$df,", p-Value",p.valor,obs,"\n"))  
     }
-    if(!is.null(obj$gamma.wald))
+    if(!is.null(object$gamma.wald))
     {
-      p.valor=obj$gamma.wald$pValue
+      p.valor=object$gamma.wald$pValue
       obs=star.obs(p.valor)
       if(p.valor<=2e-16){p.valor="<2e-16"}
-      if(p.valor>2e-16){p.valor=paste0("=",obj$gamma.wald$pValue)}
+      if(p.valor>2e-16){p.valor=paste0("=",object$gamma.wald$pValue)}
       
       cat("Null Hypothesis: all precision coefficients equal to zero \n")  
-      cat(paste0("Wald test=",formatC(obj$gamma.wald$W.alpha),", df=",obj$gamma.wald$df,", p-Value",p.valor,obs,"\n"))  
+      cat(paste0("Wald test=",formatC(object$gamma.wald$W.alpha),", df=",object$gamma.wald$df,", p-Value",p.valor,obs,"\n"))  
     }
   }else{
     cat("-- Wald Type Test -- \n")
-    p.valor=obj$pValue
+    p.valor=object$pValue
     obs=star.obs(p.valor)
     if(p.valor<=2e-16){p.valor="<2e-16"}
-    if(p.valor>2e-16){p.valor=paste0("=",obj$pValue)}
+    if(p.valor>2e-16){p.valor=paste0("=",object$pValue)}
     cat("Null Hypothesis: set by the user \n") 
-    cat(paste0("Wald test=",formatC(obj$W.alpha),", df=",obj$df,", p-Value",p.valor,obs,"\n")) 
+    cat(paste0("Wald test=",formatC(object$W.alpha),", df=",object$df,", p-Value",p.valor,obs,"\n")) 
   }
   cat("---\n")
   cat("Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1 \n")
@@ -60,48 +60,48 @@ print.WaldTest_LSMLE=function(obj)
 }
 
 #' @export
-print.SaddlepointTest_LSMLE=function(obj)
+print.SaddlepointTest_LSMLE=function(object)
 {
-  if(obj$general)
+  if(object$general)
   {
     #browser()
     cat("-- Saddlepoint Test -- \n")
     
-      p.valor=obj$pValue
-      obs=star.obs(p.valor)
-      if(p.valor<=2e-16){p.valor="<2e-16"}
-      if(p.valor>2e-16){p.valor=paste0("=",obj$pValue)}
-      
-      cat("Null Hypothesis: all mean coefficients equal to zero \n")  
-      cat(paste0("Saddlepoint test=",formatC(obj$SaddlePointTest),", df=",obj$df,", p-Value",p.valor,obs,"\n"))  
+    p.valor=object$pValue
+    obs=star.obs(p.valor)
+    if(p.valor<=2e-16){p.valor="<2e-16"}
+    if(p.valor>2e-16){p.valor=paste0("=",object$pValue)}
+    
+    cat("Null Hypothesis: all mean coefficients equal to zero \n")  
+    cat(paste0("Saddlepoint test=",formatC(object$SaddlePointTest),", df=",object$df,", p-Value",p.valor,obs,"\n"))  
     
   }else{
     cat("-- Saddlepoint Test -- \n")
-    p.valor=obj$pValue
+    p.valor=object$pValue
     obs=star.obs(p.valor)
     if(p.valor<=2e-16){p.valor="<2e-16"}
-    if(obj$pValue>2e-16){p.valor=paste0("=",obj$pValue)}
-    if(obj$pValue>0.0001){p.valor=paste0("=",round(obj$pValue,4))}
+    if(object$pValue>2e-16){p.valor=paste0("=",object$pValue)}
+    if(object$pValue>0.0001){p.valor=paste0("=",round(object$pValue,4))}
     
     cat("Null Hypothesis: set by the user \n") 
-    cat(paste0("Saddlepoint Test=",formatC(obj$SaddlePointTest),", df=",obj$df,", p-Value",p.valor,obs,"\n")) 
+    cat(paste0("Saddlepoint Test=",formatC(object$SaddlePointTest),", df=",object$df,", p-Value",p.valor,obs,"\n")) 
   }
   cat("---\n")
   cat("Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1 \n")
-  cat(paste0("Results based on LSMLE with ",obj$thrd," threads \n"))
+  cat(paste0("Results based on LSMLE with ",object$thrd," threads \n"))
 }
 
 
 #' @export
-summary.LSMLE=function(obj)
+summary.LSMLE=function(object)
 {
   b=g=obs.b=obs.g=NULL
-  beta=obj$coefficients$mean
-  gamma=obj$coefficients$precision
-  variable=names(obj$coefficients$mean)
-  variable2=names(obj$coefficients$precision)
-  std.error.beta=obj$std.error$se.mean
-  std.error.gamma=obj$std.error$se.precision
+  beta=object$coefficients$mean
+  gamma=object$coefficients$precision
+  variable=names(object$coefficients$mean)
+  variable2=names(object$coefficients$precision)
+  std.error.beta=object$std.error$se.mean
+  std.error.gamma=object$std.error$se.precision
   k=length(beta)
   m=length(gamma)
   for(i in 1:k)
@@ -132,25 +132,25 @@ summary.LSMLE=function(obj)
   colnames(g.df)=c("","Estimate","Std. Error", "z value", "Pr(>|z|)","")
   
   cat("Call: \n")      
-  print(obj$call)
+  print(object$call)
   cat("\n")
-  cat("Coefficients (mean model with",obj$link,"link):\n")
+  cat("Coefficients (mean model with",object$link,"link):\n")
   print(b.df,row.names=FALSE)
   cat("\n")
-  cat("Phi coefficients (precision model with",obj$link.phi,"link):\n")
+  cat("Phi coefficients (precision model with",object$link.phi,"link):\n")
   print(g.df,row.names=FALSE)
   cat("---\n")
   cat("Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1 \n")
   cat("\n")
-  if(obj$Tuning==0){cat("Type of estimator: MLE \n")}
+  if(object$Tuning==0){cat("Type of estimator: MLE \n")}
   else{cat("Type of estimator: LSMLE \n")}
-  cat(paste0("Pseudo R-squared: ",round(obj$pseudo.r.squared,4)),"\n")
-  cat(paste0("Tuning value: alpha=",obj$Tuning),"\n")
-  if(obj$Optimal.Tuning)
+  cat(paste0("Pseudo R-squared: ",round(object$pseudo.r.squared,4)),"\n")
+  cat(paste0("Tuning value: alpha=",object$Tuning),"\n")
+  if(object$Optimal.Tuning)
   {
     cat("Tuning of LSMLE generated by the data-driven algorithm")  
   }
-  if(!obj$Optimal.Tuning)
+  if(!object$Optimal.Tuning)
   {
     cat("Tuning of LSMLE selected by the user")  
   }

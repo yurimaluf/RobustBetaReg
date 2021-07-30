@@ -23,6 +23,10 @@ Psi_LMDPDE_Jacobian_C <- function(Theta, y, X, Z, alpha, link_mu, link_phi) {
     .Call(`_RobustBetaReg_Psi_LMDPDE_Jacobian_C`, Theta, y, X, Z, alpha, link_mu, link_phi)
 }
 
+SQV_Cpp <- function(zq, n, p) {
+    .Call(`_RobustBetaReg_SQV_Cpp`, zq, n, p)
+}
+
 #' @useDynLib RobustBetaReg, .registration=TRUE
 #' @importFrom Rcpp evalCpp
 OpenMPTest <- function(numThrd) {

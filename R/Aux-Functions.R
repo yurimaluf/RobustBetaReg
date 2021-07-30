@@ -1,9 +1,3 @@
-#' 
-SQV=function(zq,n,p)
-{
-  return(sqrt(rowSums(diff(zq)^2))/(sqrt(n)*p))
-}
-
 #'
 pearson_res=function(mu_hat,phi_hat,y)
 {
@@ -193,15 +187,32 @@ hatvalues=function(object)
   UseMethod("hatvalues")
 }
 
+#' Create a Link for beta regression model
+#' 
+#' This function provides several link functions for beta regression models
+#' 
+#' For more details see:...
+#' 
+#' @param link.mu character; one of "logit"(default), "probit", "cauchit", "cloglog" and loglog
+#' @param link.phi character; one of "log"(default) "indentity" and "sqrt"
+#' @param thrd number (integer) of threads to speed up the process. If missing, the value is autodetected by the available number of multi-core processor
+#' 
+#' @return A structure with link function, inverse link function, derivative deta/dmu and d2eta/dmu2, for both models: mean and precision.
 #'
-set.link=function(link.mu="logit",link.phi="log")
+#' @examples 
+#' links=set.link(link.mu="cauchit",link.phi="sqrt")
+#' attributes(links)
+#' 
+set.link=function(link.mu="logit",link.phi="log",thrd)
 {
+  if(missing(thrd)){thrd=tryCatch(parallel::detectCores(),error=function(e) 1)}
+  thrd=tryCatch(suppressWarnings(max(1,round(abs(thrd)))),error=function(e) 1)
   #browser()
   switch(link.mu, logit = {
-    linkfun <- function(mu) .Call(C_logit_link, mu)
-    linkinv <- function(eta) .Call(C_logit_linkinv, eta)
-    d.linkfun <- function(mu) .Call(C_logit_deta_dmu, mu)
-    d2.linkfun <- function(mu) .Call(C_logit_d2eta_dmu2, mu)
+    linkfun <- function(mu) .Call(C_logit_link, mu, thrd )
+    linkinv <- function(eta) .Call(C_logit_linkinv, eta, thrd)
+    d.linkfun <- function(mu) .Call(C_logit_deta_dmu, mu, thrd)
+    d2.linkfun <- function(mu) .Call(C_logit_d2eta_dmu2, mu, thrd)
     #valideta <- function(eta) TRUE
   }, probit = {
     linkfun <- function(mu){mu=pmax(pmin(mu,1-.Machine$double.eps),.Machine$double.eps)
@@ -216,22 +227,22 @@ set.link=function(link.mu="logit",link.phi="log")
       ddnorm=-qmu*exp(-qmu^(2)/2)/sqrt(2*pi)
       return(-ddnorm/(dnorm(qmu))^3)}
   }, cauchit = {
-    linkfun <- function(mu) .Call(C_cauchit_link, mu)
-    linkinv <- function(eta) .Call(C_cauchit_linkinv, eta)
-    d.linkfun <- function(mu).Call(C_cauchit_deta_dmu, mu)
-    d2.linkfun <- function(mu).Call(C_cauchit_d2eta_dmu2, mu)
+    linkfun <- function(mu) .Call(C_cauchit_link, mu, thrd)
+    linkinv <- function(eta) .Call(C_cauchit_linkinv, eta, thrd)
+    d.linkfun <- function(mu).Call(C_cauchit_deta_dmu, mu, thrd)
+    d2.linkfun <- function(mu).Call(C_cauchit_d2eta_dmu2, mu, thrd)
     #valideta <- function(eta) TRUE
   }, cloglog = {
-    linkfun <- function(mu) .Call(C_cloglog_link, mu)
-    linkinv <- function(eta) .Call(C_cloglog_linkinv, eta)
-    d.linkfun <- function(mu).Call(C_cloglog_deta_dmu, mu)
-    d2.linkfun <- function(mu).Call(C_cloglog_d2eta_dmu2, mu)
+    linkfun <- function(mu) .Call(C_cloglog_link, mu, thrd)
+    linkinv <- function(eta) .Call(C_cloglog_linkinv, eta, thrd)
+    d.linkfun <- function(mu).Call(C_cloglog_deta_dmu, mu, thrd)
+    d2.linkfun <- function(mu).Call(C_cloglog_d2eta_dmu2, mu, thrd)
     #valideta <- function(eta) TRUE
   }, loglog = {
-    linkfun <- function(mu) .Call(C_loglog_link, mu)
-    linkinv <- function(eta) .Call(C_loglog_linkinv, eta)
-    d.linkfun <- function(mu).Call(C_loglog_deta_dmu, mu)
-    d2.linkfun <- function(mu).Call(C_loglog_d2eta_dmu2, mu)
+    linkfun <- function(mu) .Call(C_loglog_link, mu, thrd)
+    linkinv <- function(eta) .Call(C_loglog_linkinv, eta, thrd)
+    d.linkfun <- function(mu).Call(C_loglog_deta_dmu, mu, thrd)
+    d2.linkfun <- function(mu).Call(C_loglog_d2eta_dmu2, mu, thrd)
     #valideta <- function(eta) TRUE
   }, stop(gettextf("%s link.mu not recognised", sQuote(link.mu)), 
           domain = NA))
@@ -239,27 +250,28 @@ set.link=function(link.mu="logit",link.phi="log")
   Linkfun.Mu=list(linkfun=linkfun,d.linkfun=d.linkfun,d2.linkfun=d2.linkfun,inv.link=linkinv)
   
   switch(link.phi, log = {
-    linkfun.phi <- function(phi) .Call(C_log_link, phi)
-    linkinv.phi <- function(eta) .Call(C_log_linkinv, eta)
-    d.linkfun.phi <- function(phi) .Call(C_log_deta_dmu, phi)
-    d2.linkfun.phi <- function(phi) .Call(C_log_d2eta_dmu2, phi)
+    linkfun.phi <- function(phi) .Call(C_log_link, phi, thrd)
+    linkinv.phi <- function(eta) .Call(C_log_linkinv, eta, thrd)
+    d.linkfun.phi <- function(phi) .Call(C_log_deta_dmu, phi, thrd)
+    d2.linkfun.phi <- function(phi) .Call(C_log_d2eta_dmu2, phi, thrd)
     #valideta <- function(eta) TRUE
   }, identity = {
     linkfun.phi <- function(phi) pmax(phi,.Machine$double.eps)
-    linkinv.phi <- function(eta) eta
+    linkinv.phi <- function(eta) as.numeric(eta)
     d.linkfun.phi <- function(phi) rep(1,length(phi))
     d2.linkfun.phi <- function(phi) rep(0,length(phi))
     #valideta <- function(eta) TRUE
   }, sqrt = {
-    linkfun.phi <- function(phi) .Call(C_sqrt_link, phi)
-    linkinv.phi <- function(eta) .Call(C_sqrt_linkinv, eta)
-    d.linkfun.phi <- function(phi) .Call(C_sqrt_deta_dmu, phi)
-    d2.linkfun.phi <- function(phi) .Call(C_sqrt_d2eta_dmu2, phi)
+    linkfun.phi <- function(phi) .Call(C_sqrt_link, phi, thrd)
+    linkinv.phi <- function(eta) .Call(C_sqrt_linkinv, eta, thrd)
+    d.linkfun.phi <- function(phi) .Call(C_sqrt_deta_dmu, phi, thrd)
+    d2.linkfun.phi <- function(phi) .Call(C_sqrt_d2eta_dmu2, phi, thrd)
     #valideta <- function(eta) TRUE
-  }, stop(gettextf("%s link.phi not recognised", sQuote(link.phi)), 
-          domain = NA))
+  }, stop(gettextf("%s link.phi not recognised", sQuote(link.phi)), domain = NA))
   
   Linkfun.Phi=list(linkfun=linkfun.phi,d.linkfun=d.linkfun.phi,d2.linkfun=d2.linkfun.phi,inv.link=linkinv.phi)
   
-  return(structure(list(linkfun.mu=Linkfun.Mu,linkfun.phi=Linkfun.Phi),name.link.mu=link.mu,name.link.phi=link.phi,class="link-rbr"))
+  return(structure(list(linkfun.mu=Linkfun.Mu,linkfun.phi=Linkfun.Phi),name.link.mu=link.mu,name.link.phi=link.phi,thrd=thrd,class="link-rbr"))
 }
+
+

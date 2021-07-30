@@ -1,7 +1,6 @@
 # Auto Selecting tuning parameter algorithm
 Opt.Tuning.LMDPDE=function(y,x,z,link,link.phi,control)
 {
-  #browser()
   if(missing(control)){control=robustbetareg.control()}
   control$alpha.optimal=FALSE
   LMDPDE.list=LMDPDE.par=list()
@@ -21,6 +20,9 @@ Opt.Tuning.LMDPDE=function(y,x,z,link,link.phi,control)
   for(k in 1:(M+1))
   {
     control$start=Est.param
+    y<<-y
+    x<<-x
+    z<<-z
     LMDPDE.par=tryCatch(LMDPDE.fit(y,x,z,alpha=alpha_tuning[k],link=link,link.phi=link.phi,control = control),error=function(e){LMDPDE.par$converged<-FALSE; return(LMDPDE.par)})
     if(!LMDPDE.par$converged)
     {
@@ -44,10 +46,10 @@ Opt.Tuning.LMDPDE=function(y,x,z,link,link.phi,control)
       break
     }
     LMDPDE.list[[k]]<-LMDPDE.par
-    #zq.t<-unname(rbind(zq.t,Z.q(LMDPDE.par)))
     zq.t<-unname(rbind(zq.t,do.call("c",LMDPDE.par$coefficients)/do.call("c",LMDPDE.par$std.error)))
   }
-  sqv=SQV(zq.t,n,p)
+  #sqv=SQV(zq.t,n,p)
+  sqv=as.numeric(SQV_Cpp(zq.t,n,p))
   if(all(sqv<=L))
   {
     LMDPDE.par.star<-LMDPDE.list[[1]]
@@ -80,9 +82,8 @@ Opt.Tuning.LMDPDE=function(y,x,z,link,link.phi,control)
       break
     }
     LMDPDE.list[[k]]=LMDPDE.par
-    #zq.t=unname(rbind(zq.t,Z.q(LMDPDE.par)))
     zq.t=unname(rbind(zq.t,do.call("c",LMDPDE.par$coefficients)/do.call("c",LMDPDE.par$std.error)))
-    sqv=SQV(zq.t,n,p)
+    sqv=as.numeric(SQV_Cpp(zq.t,n,p))
     sqv.test=sqv[(k-M):(k-1)]
     if(all(sqv.test<=L) || k==K )
     {
@@ -121,10 +122,6 @@ LMDPDE_Cov_Matrix=function(mu,phi,X,Z,alpha,linkobj)
   K_2alpha=exp(lbeta(a_2alpha,b_2alpha)-(1+2*alpha)*lbeta(a0,b0))
   
   #mean link function 
-  browser()
-  linkobj2=set.link()
-  Tb2=(linkobj2$linkfun.mu$mu.eta(linkobj2$linkfun.mu$linkfun(mu)))
-  
   Tb=diag((linkobj$linkfun.mu$d.linkfun(mu))^(-1))
   #precision link funtion
   Tg=diag((linkobj$linkfun.phi$d.linkfun(phi))^(-1))
@@ -139,7 +136,6 @@ LMDPDE_Cov_Matrix=function(mu,phi,X,Z,alpha,linkobj)
   mu_2alpha_dagger=digamma(b_2alpha)-digamma(a_2alpha+b_2alpha)
   kappa_mu=phi*K_alpha*(mu_alpha_star-mu_star)
   kappa_phi=K_alpha*(mu*(mu_alpha_star-mu_star)+mu_alpha_dagger-mu_dagger)
-  #E.u2.phi_2alpha=mu^2*(trigamma(a_2alpha)+trigamma(b_2alpha)+(mu_2alpha_star-mu_star)^2)+2*mu*((mu_2alpha_star-mu_star)*(mu_2alpha_dagger-mu_dagger)-trigamma(b_2alpha))+trigamma(b_2alpha)-trigamma(a_2alpha+b_2alpha)+(mu_2alpha_dagger-mu_dagger)^2
   E.u2.phi_2alpha=(mu*(mu_2alpha_star-mu_star)+(mu_2alpha_dagger-mu_dagger))^2+mu^2*trigamma(a_2alpha)+(1-mu)^2*trigamma(b_2alpha)-trigamma(a_2alpha+b_2alpha)
   
   Lambda_mu_mu=diag(phi^2*K_alpha*((mu_alpha_star-mu_star)^2+trigamma(a_alpha)+trigamma(b_alpha)))
@@ -162,7 +158,6 @@ LMDPDE_Cov_Matrix=function(mu,phi,X,Z,alpha,linkobj)
   
   Sigma=rbind(cbind(Sigma_beta_beta,Sigma_beta_gamma),cbind(t(Sigma_beta_gamma),Sigma_gamma_gamma))
   
-  #V=n*solve(Lambda)%*%Sigma%*%t(solve(Lambda))
   V=n*MASS::ginv(Lambda)%*%Sigma%*%t(MASS::ginv(Lambda))
   
   result=list()
@@ -175,7 +170,6 @@ LMDPDE_Cov_Matrix=function(mu,phi,X,Z,alpha,linkobj)
   return(result)
 }
 
-
 #Hat matrix
 hatvalues.LMDPDE=function(object)
 {
@@ -184,7 +178,6 @@ hatvalues.LMDPDE=function(object)
   y=object$y
   X=object$model$mean
   linkobj=set.link(link.mu=object$link,link.phi=object$link.phi)
-  #linkobj=make.link(link.mu=object$link,link.phi=object$link.phi)
   d.link.mu=linkobj$linkfun.mu$d.linkfun(mu_hat)
   
   y_star=log(y)-log(1-y)
@@ -193,5 +186,77 @@ hatvalues.LMDPDE=function(object)
   W.PHI=diag(x=phi_hat*V_star*((d.link.mu)^(-2)))
   H=sqrt(W.PHI)%*%X%*%solve(t(X)%*%W.PHI%*%X)%*%t(X)%*%sqrt(W.PHI)
   return(diag(H))
+}
+
+coef.LMDPDE=function(object,model=c("full","mean","precision"))
+{
+  cf <- object$coefficients
+  model=match.arg(model)
+  switch(model, mean = {
+    cf$mean
+  }, precision = {
+    cf$precision
+  }, full = {
+    nam1 <- names(cf$mean)
+    nam2 <- names(cf$precision)
+    cf <- c(cf$mean, cf$precision)
+    names(cf) <- c(nam1, if (identical(nam2, "(Phi)")) "(phi)" else paste("(phi)",nam2, sep = "_"))
+    cf
+  })
+}
+
+predict.LMDPDE = function(object, newdata = NULL, type = c("response", "link", "precision", "variance", "quantile"), at = 0.5) 
+{
+  type <- match.arg(type)
+  if (type == "quantile") {
+    qfun <- function(at, mu, phi) {
+      rval <- sapply(at, function(p) qbeta(p, mu * phi, (1 - mu) * phi))
+      if (length(at) > 1L) {
+        if (NCOL(rval) == 1L) 
+          rval <- matrix(rval, ncol = length(at), dimnames = list(unique(names(rval)),NULL))
+        colnames(rval) <- paste("q_", at, sep = "")
+      }
+      else {
+        rval <- drop(rval)
+      }
+      rval
+    }
+  }
+  if (missing(newdata)) {
+    rval <- switch(type, response = {
+      object$fitted.values$mu.predict
+    }, link = {
+      set.link(object$link,object$link.phi)$linkfun.mu$linkfun(object$fitted.values$mu.predict)
+    }, precision = {
+      object$fitted.values$phi.predict
+    }, variance = {
+      object$fitted.values$mu.predict*(1-object$fitted.values$mu.predict)/(1+object$fitted.values$phi.predict)
+    }, quantile = {
+      qfun(at, object$fitted.values$mu.predict, object$fitted.values$phi.predict)
+    })
+    return(rval)
+  }else{
+    mf1=model.frame(object$formula,data=newdata)
+    x=model.matrix(object$formula,data=mf1,rhs = 1L)
+    z=model.matrix(object$formula,data=mf1,rhs = 2L)
+    
+    rval <- switch (type, response = {
+      set.link(object$link,object$link.phi)$linkfun.mu$inv.link(x%*%object$coefficients$mean) 
+    }, link = {
+      mu_predict=set.link(object$link,object$link.phi)$linkfun.mu$inv.link(x%*%object$coefficients$mean)
+      set.link(object$link,object$link.phi)$linkfun.mu$linkfun(mu_predict)
+    }, precision = {
+      set.link(object$link,object$link.phi)$linkfun.phi$inv.link(z%*%object$coefficients$precision)
+    }, variance = {
+      mu_predict=set.link(object$link,object$link.phi)$linkfun.mu$inv.link(x%*%object$coefficients$mean)
+      phi_predict=set.link(object$link,object$link.phi)$linkfun.phi$inv.link(z%*%object$coefficients$precision)
+      mu_predict*(1-mu_predict)/phi_predict
+    }, quantile={
+      mu_predict=set.link(object$link,object$link.phi)$linkfun.mu$inv.link(x%*%object$coefficients$mean)
+      phi_predict=set.link(object$link,object$link.phi)$linkfun.phi$inv.link(z%*%object$coefficients$precision)
+      qfun(at,mu_predict,phi_predict)
+    })
+    return(rval)
+  }
 }
 

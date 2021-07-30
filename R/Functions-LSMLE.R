@@ -7,13 +7,13 @@ LSMLE.fit=function(y,x,z,alpha=NULL,link="logit",link.phi="log",control=robustbe
 {
   #options(warn = 2) #Convert warnings in errors
   result=theta=list()
+  
   #Arguments Checking
   alpha.optimal=control$alpha.optimal
   start_theta=control$start
   if(!is.null(alpha)){alpha.optimal=FALSE}
   if(is.null(alpha) & alpha.optimal==FALSE){alpha=0}
   linkobj=set.link(link.mu = link,link.phi = link.phi)
-  #linkobj=make.link(link.mu = link,link.phi = link.phi)
   k=ncol(x)
   m=ncol(z)
   if(alpha.optimal)
@@ -65,10 +65,7 @@ LSMLE.fit=function(y,x,z,alpha=NULL,link="logit",link.phi="log",control=robustbe
   result$start=start_theta #Alterar caso optar por duas tentativas de ponto inicial
   result$weights=(degbeta(y_star,mu_hat,phi_hat/q))^(alpha) #Pesos 
   result$Tuning=alpha
-  #result$Psi.Value=theta$fvec
   result$residuals=sweighted2_res(mu_hat,phi_hat,y=y,X=x,linkobj = linkobj)
-  #result$model=list(mean = x, precision = z)
-  #result$y=y
   result$n=length(mu_hat)
   result$link=link
   result$link.phi=link.phi
@@ -110,7 +107,6 @@ robustbetareg.control.LSMLE=function(object)
 WaldTypeTest.LSMLE=function(object,FUN,...)
 {
   general=FALSE
-  #browser()
   if(missing(FUN)){general=T}
   if(!object$converged){stop(paste("There is no convergence in the model",deparse(substitute(object))))}
   cl = match.call()
@@ -183,7 +179,6 @@ WaldTypeTest.LSMLE=function(object,FUN,...)
 #' @export
 SaddlepointTest.LSMLE=function(object,FUN=NULL,...,thrd)
 {
-  #browser()
   if(!object$converged){stop(paste("There is no convergence in the model",deparse(substitute(object))))}
   result=list()
   msg="Results based on LSMLE."
@@ -199,13 +194,11 @@ SaddlepointTest.LSMLE=function(object,FUN=NULL,...,thrd)
   B_0=G_0=general=NULL
   N=object$n
   linkobj=set.link(object$link,object$link.phi)
-  #linkobj=make.link(object$link,object$link.phi)
   alpha=object$Tuning
   if(is.null(FUN))
   {
     general=T
     #Beta
-    #eta_0=beta_hat
     ind_fix=1:m
     ind_free=(m+1):(m+k)
     h_beta=tryCatch(suppressWarnings(stats::optim(par=gamma_hat,sup_K_psi_C,ind_free=ind_free,ind_fix=ind_fix,eta_0=beta_hat,Beta=beta_hat,Gamma=gamma_hat,X=X,Z=Z,alpha=alpha,linkobj=linkobj,thrd=thrd,method="BFGS")$value),error=function(e) NULL)
@@ -267,7 +260,6 @@ plotenvelope.LSMLE=function(object,type=c("sweighted2","pearson","weighted","swe
   residual=residuals(object,type=type)
   k=1
   if(PrgBar){pb = txtProgressBar(min = 0, max = n.sim, style = 3)}
-  #browser()
   while(k<=n.sim & !limit)
   {
     y.sim=pmax(pmin(sapply(seq(1,n,1),function(i) rbeta(1,a[i],b[i])),1-.Machine$double.eps),.Machine$double.eps)
@@ -339,7 +331,6 @@ residuals.LSMLE=function(object,type=c("sweighted2","pearson","weighted","sweigh
   x=object$model$mean
   z=object$model$precision
   linkobj=set.link(link.mu=object$link,link.phi=object$link.phi)
-  #linkobj=make.link(link.mu=object$link,link.phi=object$link.phi)
   mu.predict=object$fitted.values$mu.predict
   phi.predict=object$fitted.values$phi.predict
   if(type=="sweighted2")

@@ -587,6 +587,14 @@ arma::mat Psi_LMDPDE_Jacobian_C(arma::vec Theta, NumericVector y, arma::mat X,ar
   return(J);
 }
 
+// [[Rcpp::export]]
+NumericVector SQV_Cpp(arma::mat zq, double n, double p)
+{
+    arma::mat temp =  sqrt(sum(pow(diff(zq,1,0),2),1))/(sqrt(n)*p);
+    NumericVector result = wrap(temp.t()); 
+    return(result);
+}
+
 
 /*    Test Functions    */
 
