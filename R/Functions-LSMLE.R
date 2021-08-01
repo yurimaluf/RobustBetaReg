@@ -211,6 +211,7 @@ SaddlepointTest.LSMLE=function(object,FUN=NULL,...,thrd)
     general=F
     result=list()
     #Hipothesis
+    #browser()
     g=FUN
     eta_0=g(c(beta_hat,gamma_hat),...)
     ind_free=which(c(beta_hat,gamma_hat)==eta_0)

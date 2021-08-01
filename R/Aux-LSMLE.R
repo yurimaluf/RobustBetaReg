@@ -212,8 +212,35 @@ K2_psi_C=function(l,Beta,Gamma,Beta_0,Gamma_0,X,Z,alpha,linkobj,thrd)
   return(mean(log(Psi.moment)))
 }
 
+
 LaplaceApx2_C=function(Beta,Gamma,Beta_0,Gamma_0,l1,l2,X,Z,alpha,linkobj,thrd)
 {
+  mu=mu_0=linkobj$linkfun.mu$inv.link(X%*%Beta)
+  phi=phi_0=linkobj$linkfun.phi$inv.link(Z%*%Gamma)
+  if(!all(Beta==Beta_0))
+  {
+    mu_0=linkobj$linkfun.mu$inv.link(X%*%Beta_0)
+  }
+  if(!all(Gamma==Gamma_0))
+  {
+    phi_0=linkobj$linkfun.phi$inv.link(Z%*%Gamma_0)
+  }
+  Kx=(X%*%l1)/linkobj$linkfun.mu$d.linkfun(mu)
+  Kz=(Z%*%l2)/linkobj$linkfun.phi$d.linkfun(phi)
+  n=length(mu)
+  La=NULL
+  #browser()
+  La=La_Cpp(mu, phi, mu_0, phi_0, alpha, Kx, Kz,thrd=thrd)
+  return(La)
+}
+
+
+###################################################################################################
+
+#Laplace approximation second order
+LaplaceApx2_C_B=function(Beta,Gamma,Beta_0,Gamma_0,l1,l2,X,Z,alpha,linkobj,thrd)
+{
+  #browser()
   mu=mu_0=linkobj$linkfun.mu$inv.link(X%*%Beta)
   phi=phi_0=linkobj$linkfun.phi$inv.link(Z%*%Gamma)
   if(!all(Beta==Beta_0))
@@ -227,11 +254,44 @@ LaplaceApx2_C=function(Beta,Gamma,Beta_0,Gamma_0,l1,l2,X,Z,alpha,linkobj,thrd)
   Kx=(X%*%l1)/linkobj$linkfun.mu$d.linkfun(mu)
   Kz=(Z%*%l2)/linkobj$linkfun.phi$d.linkfun(phi)
   n=length(mu)
-  La=NULL
+  La=y0=p0=NULL
+  for(i in 1:n)
+  {
+    opt=root.p_C(mu=mu[i],phi=phi[i],mu_0=mu_0[i],phi_0=phi_0[i],alpha=alpha,Kx=Kx[i],Kz=Kz[i])
+    #opt=root.p(mu=mu[i],phi=phi[i],mu_0=mu_0[i],phi_0=phi_0[i],alpha=alpha,Kx=Kx[i],Kz=Kz[i])
+    y0=c(y0,opt$root)
+    p0=c(p0,opt$value)
+  } 
   #browser()
-  La=La_Cpp(mu, phi, mu_0, phi_0, alpha, Kx, Kz,thrd=thrd) 
+  La=La_CppB(p0,y0, mu, phi, mu_0, phi_0, alpha, Kx, Kz,thrd=8) 
+  
   return(La)
 }
+
+root.p_C=function(mu,phi,mu_0,phi_0,alpha,Kx,Kz)
+{
+  result=list()
+  #browser()
+  #if(is.na(Kx) || is.na(Kz)){browser()}
+  roots=rootSolve::uniroot.all(dp_LSMLE_Cpp,lower=-25,upper=25,mu=mu,phi=phi,mu_0=mu_0,phi_0=phi_0,alpha=alpha,Kx=Kx,Kz=Kz)
+  #root.teste=uniroot_R(lower=-25, upper=25,mu=mu,phi=phi,mu_0=mu_0,phi_0=phi_0,alpha=alpha,Kx=Kx,Kz=Kz)
+  #root.teste2=uniroot_C(lower=-25, upper=25,mu=mu,phi=phi,mu_0=mu_0,phi_0=phi_0,alpha=alpha,Kx=Kx,Kz=Kz)
+  if(length(roots)>1)
+  {
+    p.vector=sapply(1:length(roots),function(k) p_LSMLE_Cpp(roots[k],mu,phi,mu_0,phi_0,alpha,Kx,Kz))
+    index=which.max(p.vector)
+  }else{
+    p.vector=tryCatch(p_LSMLE_Cpp(roots,mu,phi,mu_0,phi_0,alpha,Kx,Kz),error=function(e){problema<-TRUE; return(NULL)})
+    index=1
+  }
+  result$root=roots[index]
+  result$value=p.vector[index]
+  return(result)
+}
+
+
+
+########################################################################################################
 
 coef.LSMLE=function(object,model=c("full","mean","precision"))
 {

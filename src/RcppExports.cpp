@@ -45,6 +45,42 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// p_LSMLE_Cpp
+double p_LSMLE_Cpp(double y_star, double mu, double phi, double mu_0, double phi_0, double alpha, double Kx, double Kz);
+RcppExport SEXP _RobustBetaReg_p_LSMLE_Cpp(SEXP y_starSEXP, SEXP muSEXP, SEXP phiSEXP, SEXP mu_0SEXP, SEXP phi_0SEXP, SEXP alphaSEXP, SEXP KxSEXP, SEXP KzSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< double >::type y_star(y_starSEXP);
+    Rcpp::traits::input_parameter< double >::type mu(muSEXP);
+    Rcpp::traits::input_parameter< double >::type phi(phiSEXP);
+    Rcpp::traits::input_parameter< double >::type mu_0(mu_0SEXP);
+    Rcpp::traits::input_parameter< double >::type phi_0(phi_0SEXP);
+    Rcpp::traits::input_parameter< double >::type alpha(alphaSEXP);
+    Rcpp::traits::input_parameter< double >::type Kx(KxSEXP);
+    Rcpp::traits::input_parameter< double >::type Kz(KzSEXP);
+    rcpp_result_gen = Rcpp::wrap(p_LSMLE_Cpp(y_star, mu, phi, mu_0, phi_0, alpha, Kx, Kz));
+    return rcpp_result_gen;
+END_RCPP
+}
+// dp_LSMLE_Cpp
+NumericVector dp_LSMLE_Cpp(NumericVector y_star, double mu, double phi, double mu_0, double phi_0, double alpha, double Kx, double Kz);
+RcppExport SEXP _RobustBetaReg_dp_LSMLE_Cpp(SEXP y_starSEXP, SEXP muSEXP, SEXP phiSEXP, SEXP mu_0SEXP, SEXP phi_0SEXP, SEXP alphaSEXP, SEXP KxSEXP, SEXP KzSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< NumericVector >::type y_star(y_starSEXP);
+    Rcpp::traits::input_parameter< double >::type mu(muSEXP);
+    Rcpp::traits::input_parameter< double >::type phi(phiSEXP);
+    Rcpp::traits::input_parameter< double >::type mu_0(mu_0SEXP);
+    Rcpp::traits::input_parameter< double >::type phi_0(phi_0SEXP);
+    Rcpp::traits::input_parameter< double >::type alpha(alphaSEXP);
+    Rcpp::traits::input_parameter< double >::type Kx(KxSEXP);
+    Rcpp::traits::input_parameter< double >::type Kz(KzSEXP);
+    rcpp_result_gen = Rcpp::wrap(dp_LSMLE_Cpp(y_star, mu, phi, mu_0, phi_0, alpha, Kx, Kz));
+    return rcpp_result_gen;
+END_RCPP
+}
 // La_Cpp
 NumericVector La_Cpp(NumericVector mu, NumericVector phi, NumericVector mu_0, NumericVector phi_0, double alpha, NumericVector Kx, NumericVector Kz, int thrd);
 RcppExport SEXP _RobustBetaReg_La_Cpp(SEXP muSEXP, SEXP phiSEXP, SEXP mu_0SEXP, SEXP phi_0SEXP, SEXP alphaSEXP, SEXP KxSEXP, SEXP KzSEXP, SEXP thrdSEXP) {
@@ -60,6 +96,26 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< NumericVector >::type Kz(KzSEXP);
     Rcpp::traits::input_parameter< int >::type thrd(thrdSEXP);
     rcpp_result_gen = Rcpp::wrap(La_Cpp(mu, phi, mu_0, phi_0, alpha, Kx, Kz, thrd));
+    return rcpp_result_gen;
+END_RCPP
+}
+// La_CppB
+NumericVector La_CppB(NumericVector p0, NumericVector y0, NumericVector mu, NumericVector phi, NumericVector mu_0, NumericVector phi_0, double alpha, NumericVector Kx, NumericVector Kz, int thrd);
+RcppExport SEXP _RobustBetaReg_La_CppB(SEXP p0SEXP, SEXP y0SEXP, SEXP muSEXP, SEXP phiSEXP, SEXP mu_0SEXP, SEXP phi_0SEXP, SEXP alphaSEXP, SEXP KxSEXP, SEXP KzSEXP, SEXP thrdSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< NumericVector >::type p0(p0SEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type y0(y0SEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type mu(muSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type phi(phiSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type mu_0(mu_0SEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type phi_0(phi_0SEXP);
+    Rcpp::traits::input_parameter< double >::type alpha(alphaSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type Kx(KxSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type Kz(KzSEXP);
+    Rcpp::traits::input_parameter< int >::type thrd(thrdSEXP);
+    rcpp_result_gen = Rcpp::wrap(La_CppB(p0, y0, mu, phi, mu_0, phi_0, alpha, Kx, Kz, thrd));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -130,8 +186,8 @@ RcppExport SEXP C_cloglog_d2eta_dmu2(SEXP, SEXP);
 RcppExport SEXP C_cloglog_deta_dmu(SEXP, SEXP);
 RcppExport SEXP C_cloglog_link(SEXP, SEXP);
 RcppExport SEXP C_cloglog_linkinv(SEXP, SEXP);
-RcppExport SEXP C_log_d2eta_dmu2(SEXP, SEXP);
-RcppExport SEXP C_log_deta_dmu(SEXP, SEXP);
+RcppExport SEXP C_log_d2eta_dphi2(SEXP, SEXP);
+RcppExport SEXP C_log_deta_dphi(SEXP, SEXP);
 RcppExport SEXP C_logit_d2eta_dmu2(SEXP, SEXP);
 RcppExport SEXP C_logit_deta_dmu(SEXP, SEXP);
 RcppExport SEXP C_logit_link(SEXP, SEXP);
@@ -142,8 +198,8 @@ RcppExport SEXP C_loglog_d2eta_dmu2(SEXP, SEXP);
 RcppExport SEXP C_loglog_deta_dmu(SEXP, SEXP);
 RcppExport SEXP C_loglog_link(SEXP, SEXP);
 RcppExport SEXP C_loglog_linkinv(SEXP, SEXP);
-RcppExport SEXP C_sqrt_d2eta_dmu2(SEXP, SEXP);
-RcppExport SEXP C_sqrt_deta_dmu(SEXP, SEXP);
+RcppExport SEXP C_sqrt_d2eta_dphi2(SEXP, SEXP);
+RcppExport SEXP C_sqrt_deta_dphi(SEXP, SEXP);
 RcppExport SEXP C_sqrt_link(SEXP, SEXP);
 RcppExport SEXP C_sqrt_linkinv(SEXP, SEXP);
 RcppExport SEXP testeC(SEXP, SEXP);
@@ -151,7 +207,10 @@ RcppExport SEXP testeC(SEXP, SEXP);
 static const R_CallMethodDef CallEntries[] = {
     {"_RobustBetaReg_Psi_LSMLE_Cpp", (DL_FUNC) &_RobustBetaReg_Psi_LSMLE_Cpp, 7},
     {"_RobustBetaReg_Psi_LSMLE_Jacobian_C", (DL_FUNC) &_RobustBetaReg_Psi_LSMLE_Jacobian_C, 7},
+    {"_RobustBetaReg_p_LSMLE_Cpp", (DL_FUNC) &_RobustBetaReg_p_LSMLE_Cpp, 8},
+    {"_RobustBetaReg_dp_LSMLE_Cpp", (DL_FUNC) &_RobustBetaReg_dp_LSMLE_Cpp, 8},
     {"_RobustBetaReg_La_Cpp", (DL_FUNC) &_RobustBetaReg_La_Cpp, 8},
+    {"_RobustBetaReg_La_CppB", (DL_FUNC) &_RobustBetaReg_La_CppB, 10},
     {"_RobustBetaReg_Psi_LMDPDE_Cpp", (DL_FUNC) &_RobustBetaReg_Psi_LMDPDE_Cpp, 7},
     {"_RobustBetaReg_Psi_LMDPDE_Jacobian_C", (DL_FUNC) &_RobustBetaReg_Psi_LMDPDE_Jacobian_C, 7},
     {"_RobustBetaReg_SQV_Cpp", (DL_FUNC) &_RobustBetaReg_SQV_Cpp, 3},
@@ -164,8 +223,8 @@ static const R_CallMethodDef CallEntries[] = {
     {"C_cloglog_deta_dmu",   (DL_FUNC) &C_cloglog_deta_dmu,   2},
     {"C_cloglog_link",       (DL_FUNC) &C_cloglog_link,       2},
     {"C_cloglog_linkinv",    (DL_FUNC) &C_cloglog_linkinv,    2},
-    {"C_log_d2eta_dmu2",     (DL_FUNC) &C_log_d2eta_dmu2,     2},
-    {"C_log_deta_dmu",       (DL_FUNC) &C_log_deta_dmu,       2},
+    {"C_log_d2eta_dphi2",    (DL_FUNC) &C_log_d2eta_dphi2,    2},
+    {"C_log_deta_dphi",      (DL_FUNC) &C_log_deta_dphi,      2},
     {"C_logit_d2eta_dmu2",   (DL_FUNC) &C_logit_d2eta_dmu2,   2},
     {"C_logit_deta_dmu",     (DL_FUNC) &C_logit_deta_dmu,     2},
     {"C_logit_link",         (DL_FUNC) &C_logit_link,         2},
@@ -176,8 +235,8 @@ static const R_CallMethodDef CallEntries[] = {
     {"C_loglog_deta_dmu",    (DL_FUNC) &C_loglog_deta_dmu,    2},
     {"C_loglog_link",        (DL_FUNC) &C_loglog_link,        2},
     {"C_loglog_linkinv",     (DL_FUNC) &C_loglog_linkinv,     2},
-    {"C_sqrt_d2eta_dmu2",    (DL_FUNC) &C_sqrt_d2eta_dmu2,    2},
-    {"C_sqrt_deta_dmu",      (DL_FUNC) &C_sqrt_deta_dmu,      2},
+    {"C_sqrt_d2eta_dphi2",   (DL_FUNC) &C_sqrt_d2eta_dphi2,   2},
+    {"C_sqrt_deta_dphi",     (DL_FUNC) &C_sqrt_deta_dphi,     2},
     {"C_sqrt_link",          (DL_FUNC) &C_sqrt_link,          2},
     {"C_sqrt_linkinv",       (DL_FUNC) &C_sqrt_linkinv,       2},
     {"testeC",               (DL_FUNC) &testeC,               2},

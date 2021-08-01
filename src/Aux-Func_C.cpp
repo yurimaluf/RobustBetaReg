@@ -148,6 +148,10 @@ arma::mat Psi_LSMLE_Jacobian_C(arma::vec Theta, NumericVector y, arma::mat X,arm
   return(J);
 }
 
+
+/*    Saddlepoint        */
+
+// [[Rcpp::export]]
 double p_LSMLE_Cpp(double y_star, double mu, double phi, double mu_0, double phi_0, double alpha, double Kx, double Kz)
 {
   double q, phi_q, a, b, a0, b0, u1, u2, muA, muB;
@@ -166,6 +170,34 @@ double p_LSMLE_Cpp(double y_star, double mu, double phi, double mu_0, double phi
   double f0 = exp(-(R::lbeta(a0,b0)+b0*y_star+phi_0*R::log1pexp(-y_star)));
   double result = (u1+u2)*pow(f,alpha)+log(f0);
   
+  return(result);
+}
+
+// [[Rcpp::export]]
+NumericVector dp_LSMLE_Cpp(NumericVector y_star, double mu, double phi, double mu_0, double phi_0, double alpha, double Kx, double Kz)
+{
+  double q, phi_q, a, b, a0, b0, u1, u2, du1, du2, muA, muB, f, f0, df, dlnf0;
+  q=1-alpha;
+  phi_q=phi/q;
+  a=mu*phi_q;
+  b=phi_q-a;
+  a0=mu_0*phi_0;
+  b0=(1-mu_0)*phi_0;  
+  muA = R::digamma(a)-R::digamma(b);
+  muB = R::digamma(b)-R::digamma(phi_q);
+  int n = y_star.size();
+  NumericVector result (n);
+  for(int i=0;i<n;i++)
+  {
+    u1=phi_q*(y_star[i]-muA);
+    u2=(mu*(y_star[i]-muA)-R::log1pexp(y_star[i])-muB)/q;
+    du1=phi_q;
+    du2=(mu-exp(y_star[i])/(1+exp(y_star[i])))/q;
+    f = exp(-(R::lbeta(a,b)+b*y_star[i]+phi_q*R::log1pexp(-y_star[i])));
+    df = alpha*phi_q*(mu+(mu-1)*exp(y_star[i]))*pow(f,alpha)/(1+exp(y_star[i]));
+    dlnf0 = phi_0*(mu_0+(mu_0-1)*exp(y_star[i]))/(1+exp(y_star[i]));
+    result[i] = (Kx*du1+Kz*du2)*pow(f,alpha)+(Kx*u1+Kz*u2)*df+dlnf0;
+  }
   return(result);
 }
 
@@ -381,7 +413,7 @@ NumericVector La_Cpp(NumericVector mu, NumericVector phi, NumericVector mu_0,Num
   double *VKx = (double *) calloc(size,sizeof(double));
   double *VKz = (double *) calloc(size,sizeof(double));
   //Vector assembling
-  for(i=0;i<40;i++)
+  for(i=0;i<size;i++)
   {
     Vmu[i]=mu[i];
     Vphi[i]=phi[i];
@@ -417,6 +449,69 @@ for(i=0; i<size;i++)
 
   return(result);
 }
+
+
+// [[Rcpp::export]]
+NumericVector La_CppB(NumericVector p0,NumericVector y0, NumericVector mu, NumericVector phi, NumericVector mu_0,NumericVector phi_0, double alpha, NumericVector Kx,NumericVector Kz, int thrd)
+{
+  int i;
+  int size = y0.size();
+  NumericVector result (size);
+  double *v = (double *) calloc(size,sizeof(double));
+  //Inputs
+  double *Vp0 = (double *) calloc(size,sizeof(double));
+  double *Vy0 = (double *) calloc(size,sizeof(double));
+  double *Vmu = (double *) calloc(size,sizeof(double));
+  double *Vphi = (double *) calloc(size,sizeof(double));
+  double *Vmu_0 = (double *) calloc(size,sizeof(double));
+  double *Vphi_0 = (double *) calloc(size,sizeof(double));
+  double *VKx = (double *) calloc(size,sizeof(double));
+  double *VKz = (double *) calloc(size,sizeof(double));
+  //Inicializa vetor
+  for(i=0;i<40;i++)
+  {
+    Vp0[i]=p0[i];
+    Vy0[i]=y0[i];
+    Vmu[i]=mu[i];
+    Vphi[i]=phi[i];
+    Vmu_0[i]=mu_0[i];
+    Vphi_0[i]=phi_0[i];
+    VKx[i]=Kx[i];
+    VKz[i]=Kz[i];
+  }
+#if _OPENMP
+  omp_set_num_threads(thrd);//define number of threads 
+#endif  
+#pragma omp parallel shared(size,v,Vy0,Vmu,Vphi,Vmu_0,Vphi_0,VKx,VKz,Vp0,alpha) private(i)
+{
+#pragma omp for
+  for(i=0;i<40;i++)
+  {
+    v[i]=DerivativeVector_Cpp(Vy0[i], Vmu[i], Vphi[i],Vmu_0[i],Vphi_0[i],alpha,VKx[i],VKz[i],Vp0[i]);
+    //v[i]=teste2(Vy0[i], Vmu[i], Vphi[i],Vmu_0[i],Vphi_0[i],alpha,VKx[i],VKz[i],Vp0[i]);
+  }
+} 
+for(i=0; i<40;i++)
+{
+  result[i]=v[i];
+}
+free (v);
+free (Vp0);
+free (Vy0);
+free (Vmu);
+free (Vphi);
+free (Vmu_0);
+free (Vphi_0);
+free (VKx);
+free (VKz);
+
+return(result);
+}
+
+
+
+
+
 
 
 /*  LMDPDE - Functions C++  */

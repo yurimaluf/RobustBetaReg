@@ -216,7 +216,7 @@ set.link=function(link.mu="logit",link.phi="log",thrd)
     #valideta <- function(eta) TRUE
   }, probit = {
     linkfun <- function(mu){mu=pmax(pmin(mu,1-.Machine$double.eps),.Machine$double.eps)
-      return(qnorm(mu))} 
+      return(qnorm(mu))}
     linkinv <- function(eta) {thresh <- -qnorm(.Machine$double.eps)
       eta <- pmin(pmax(eta, -thresh), thresh)
       return(pnorm(eta))}
@@ -244,16 +244,20 @@ set.link=function(link.mu="logit",link.phi="log",thrd)
     d.linkfun <- function(mu).Call(C_loglog_deta_dmu, mu, thrd)
     d2.linkfun <- function(mu).Call(C_loglog_d2eta_dmu2, mu, thrd)
     #valideta <- function(eta) TRUE
-  }, stop(gettextf("%s link.mu not recognised", sQuote(link.mu)), 
+  }, stop(gettextf("%s link.mu not recognised", sQuote(link.mu)),
           domain = NA))
-  
+
   Linkfun.Mu=list(linkfun=linkfun,d.linkfun=d.linkfun,d2.linkfun=d2.linkfun,inv.link=linkinv)
-  
+
   switch(link.phi, log = {
     linkfun.phi <- function(phi) .Call(C_log_link, phi, thrd)
     linkinv.phi <- function(eta) .Call(C_log_linkinv, eta, thrd)
-    d.linkfun.phi <- function(phi) .Call(C_log_deta_dmu, phi, thrd)
-    d2.linkfun.phi <- function(phi) .Call(C_log_d2eta_dmu2, phi, thrd)
+    d.linkfun.phi <- function(phi) .Call(C_log_deta_dphi, phi, thrd)
+    d2.linkfun.phi <- function(phi) .Call(C_log_d2eta_dphi2, phi, thrd)
+    #linkfun.phi <- function(phi) as.numeric(log(pmax(phi,.Machine$double.eps)))
+    #linkinv.phi <- function(eta) as.numeric(exp(eta))
+    #d.linkfun.phi <- function(phi)  as.numeric((pmax(phi,.Machine$double.eps))^(-1))
+    #d2.linkfun.phi <- function(phi) as.numeric(-(pmax(phi,.Machine$double.eps))^(-2))
     #valideta <- function(eta) TRUE
   }, identity = {
     linkfun.phi <- function(phi) pmax(phi,.Machine$double.eps)
@@ -264,14 +268,199 @@ set.link=function(link.mu="logit",link.phi="log",thrd)
   }, sqrt = {
     linkfun.phi <- function(phi) .Call(C_sqrt_link, phi, thrd)
     linkinv.phi <- function(eta) .Call(C_sqrt_linkinv, eta, thrd)
-    d.linkfun.phi <- function(phi) .Call(C_sqrt_deta_dmu, phi, thrd)
-    d2.linkfun.phi <- function(phi) .Call(C_sqrt_d2eta_dmu2, phi, thrd)
+    d.linkfun.phi <- function(phi) .Call(C_sqrt_deta_dphi, phi, thrd)
+    d2.linkfun.phi <- function(phi) .Call(C_sqrt_d2eta_dphi2, phi, thrd)
     #valideta <- function(eta) TRUE
   }, stop(gettextf("%s link.phi not recognised", sQuote(link.phi)), domain = NA))
-  
+
   Linkfun.Phi=list(linkfun=linkfun.phi,d.linkfun=d.linkfun.phi,d2.linkfun=d2.linkfun.phi,inv.link=linkinv.phi)
-  
+
   return(structure(list(linkfun.mu=Linkfun.Mu,linkfun.phi=Linkfun.Phi),name.link.mu=link.mu,name.link.phi=link.phi,thrd=thrd,class="link-rbr"))
+}
+
+#'
+set.link2=function(link.mu="logit",link.phi="log")
+{
+  #Mean Links
+  if(link.mu=="logit")
+  {
+    linkfun=function(mu)
+    {
+      mu=pmax(pmin(mu,1-.Machine$double.eps),.Machine$double.eps)
+      return(log(mu)-log(1-mu))
+    }
+    d.linkfun=function(mu)
+    {
+      mu=pmax(pmin(mu,1-.Machine$double.eps),.Machine$double.eps)
+      return((mu-mu^2)^(-1))
+    }
+    d2.linkfun=function(mu)
+    {
+      mu=pmax(pmin(mu,1-.Machine$double.eps),.Machine$double.eps)
+      return((2*mu-1)/(mu*(1-mu))^2)
+    }
+    inv.link=function(eta)
+    {
+      return(as.numeric(pmax(pmin(exp(eta-Rmpfr::log1pexp(eta)),1-.Machine$double.eps),.Machine$double.eps)))
+    }
+  }
+  if(link.mu=="probit")
+  {
+    linkfun=function(mu)
+    {
+      mu=pmax(pmin(mu,1-.Machine$double.eps),.Machine$double.eps)
+      return(qnorm(mu))
+    }
+    d.linkfun=function(mu)
+    {
+      mu=pmax(pmin(mu,1-.Machine$double.eps),.Machine$double.eps)
+      return((dnorm(qnorm(mu)))^(-1))
+    }
+    d2.linkfun=function(mu)
+    {
+      mu=pmax(pmin(mu,1-.Machine$double.eps),.Machine$double.eps)
+      return(-ddnorm(qnorm(mu))/(dnorm(qnorm(mu)))^3)
+    }
+    inv.link=function(eta)
+    {
+      return(as.numeric(pmax(pmin(pnorm(eta),1-.Machine$double.eps),.Machine$double.eps)))
+    }
+  }
+  if(link.mu=="cloglog")
+  {
+    linkfun=function(mu)
+    {
+      mu=pmax(pmin(mu,1-.Machine$double.eps),.Machine$double.eps)
+      return(log(-log(1-mu)))
+    }
+    d.linkfun=function(mu)
+    {
+      mu=pmax(pmin(mu,1-.Machine$double.eps),.Machine$double.eps)
+      return((-(1-mu)*log(1-mu))^(-1))
+    }
+    d2.linkfun=function(mu)
+    {
+      mu=pmax(pmin(mu,1-.Machine$double.eps),.Machine$double.eps)
+      return(-(log(1-mu)+1)/((1-mu)*log(1-mu))^2)
+    }
+    inv.link=function(eta)
+    {
+      return(as.numeric(pmax(pmin(1-exp(-exp(-eta)),1-.Machine$double.eps),.Machine$double.eps)))
+    }
+  }
+  if(link.mu=="cauchit")
+  {
+    linkfun=function(mu)
+    {
+      mu=pmax(pmin(mu,1-.Machine$double.eps),.Machine$double.eps)
+      return(tan(pi*(mu-0.5)))
+    }
+    d.linkfun=function(mu)
+    {
+      mu=pmax(pmin(mu,1-.Machine$double.eps),.Machine$double.eps)
+      return(pi*pracma::sec(pi*(mu-0.5))^2)
+    }
+    d2.linkfun=function(mu)
+    {
+      mu=pmax(pmin(mu,1-.Machine$double.eps),.Machine$double.eps)
+      return(2*pi*tan(pi*(mu-0.5))*pracma::sec(pi*(mu-0.5))^2)
+    }
+    inv.link=function(eta)
+    {
+      return(as.numeric(pmax(pmin(0.5+atan(eta)/pi,1-.Machine$double.eps),.Machine$double.eps)))
+    }
+  }
+  if(link.mu=="loglog")
+  {
+    linkfun=function(mu)
+    {
+      mu=pmax(pmin(mu,1-.Machine$double.eps),.Machine$double.eps)
+      return(-log(-log(mu)))
+    }
+    d.linkfun=function(mu)
+    {
+      mu=pmax(pmin(mu,1-.Machine$double.eps),.Machine$double.eps)
+      return(-(mu*log(mu))^(-1))
+    }
+    d2.linkfun=function(mu)
+    {
+      mu=pmax(pmin(mu,1-.Machine$double.eps),.Machine$double.eps)
+      return((log(mu)+1)/(mu*log(mu))^2)
+    }
+    inv.link=function(eta)
+    {
+      return(as.numeric(pmax(pmin(exp(-exp(-eta)),1-.Machine$double.eps),.Machine$double.eps)))
+    }
+  }
+  Linkfun.Mu=list(linkfun=linkfun,d.linkfun=d.linkfun,d2.linkfun=d2.linkfun,inv.link=inv.link)
+  ### Precision Links
+  if(link.phi=="log")
+  {
+    linkfun.phi=function(phi)
+    {
+      phi=pmax(phi,.Machine$double.eps)
+      return(log(phi))
+    }
+    d.linkfun.phi=function(phi)
+    {
+      phi=pmax(phi,.Machine$double.eps)
+      return((phi)^(-1))
+    }
+    d2.linkfun.phi=function(phi)
+    {
+      phi=pmax(phi,.Machine$double.eps)
+      return(-(phi^(-2)))
+    }
+    inv.link.phi=function(eta)
+    {
+      return(as.numeric(exp(eta)))
+    }
+  }
+  if(link.phi=="identity")
+  {
+    linkfun.phi=function(phi)
+    {
+      phi=pmax(phi,.Machine$double.eps)
+      return(phi)
+    }
+    d.linkfun.phi=function(phi)
+    {
+      return(rep(1,length(phi)))
+    }
+    d2.linkfun.phi=function(phi)
+    {
+      return(rep(0,length(phi)))
+    }
+    inv.link.phi=function(eta)
+    {
+      return(as.numeric(eta))
+    }
+  }
+  if(link.phi=="sqrt")
+  {
+    linkfun.phi=function(phi)
+    {
+      phi=pmax(phi,.Machine$double.eps)
+      return(sqrt(phi))
+    }
+    d.linkfun.phi=function(phi)
+    {
+      return((2*sqrt(phi))^(-1))
+    }
+    d2.linkfun.phi=function(phi)
+    {
+      #return(-(0.25*phi^(-3/2)))
+      return(-0.25*(phi^(-3/2)))
+    }
+    inv.link.phi=function(eta)
+    {
+      return(as.numeric(eta^2))
+    }
+  }
+  Linkfun.Phi=list(linkfun=linkfun.phi,d.linkfun=d.linkfun.phi,d2.linkfun=d2.linkfun.phi,inv.link=inv.link.phi)
+  ###
+  linkobj=structure(list(linkfun.mu=Linkfun.Mu,linkfun.phi=Linkfun.Phi),name.link.mu=link.mu,name.link.phi=link.phi,class="link-rbr")
+  return(linkobj)
 }
 
 
