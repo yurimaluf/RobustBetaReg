@@ -5,9 +5,9 @@
 \alias{plot.LSMLE}
 \title{Interactive plots for diagnostic of robust betareg models}
 \usage{
-\method{plot}{LMDPDE}(object, ask = TRUE, ...)
+plot.LMDPDE(object, ask = TRUE, ...)
 
-\method{plot}{LSMLE}(object, ask = TRUE, ...)
+plot.LSMLE(object, ask = TRUE, ...)
 }
 \arguments{
 \item{object}{fitted model object of class  "LSMLE" or "LMDPDE".}
