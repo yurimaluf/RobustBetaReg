@@ -7,7 +7,7 @@ LSMLE.fit=function(y,x,z,alpha=NULL,link="logit",link.phi="log",control=robustbe
 {
   #options(warn = 2) #Convert warnings in errors
   result=theta=list()
-  
+  #browser()
   #Arguments Checking
   alpha.optimal=control$alpha.optimal
   start_theta=control$start
@@ -24,14 +24,22 @@ LSMLE.fit=function(y,x,z,alpha=NULL,link="logit",link.phi="log",control=robustbe
   {
     mle=tryCatch(suppressWarnings(betareg.fit(x,y,z,link=link,link.phi = link.phi)),error=function(e) NULL)
     start_theta=as.numeric(do.call("c",mle$coefficients))
+    theta$x=start_theta
+    theta$converged=mle$converged
   }
   #Point Estimation
+  #browser()
   q=1-alpha
+  check=TRUE
+
   theta=tryCatch(nleqslv(start_theta,Psi_LSMLE_Cpp,jac=Psi_LSMLE_Jacobian_C,y=y,X=x,Z=z,alpha=alpha,link_mu=link,link_phi=link.phi,control=list(ftol=control$tolerance,maxit=control$maxit),method="Newton",jacobian = T),error=function(e){
-  theta$msg<-e$message;return(theta)})
-  theta$converged=F
-  if(all(abs(theta$fvec)<control$tolerance) & !all(theta$fvec==0) & all(diag(theta$jac)<0)){theta$converged=T}
-    
+    theta$msg<-e$message;check<<-F;return(theta)})
+    if(check){
+      if(all(abs(theta$fvec)<control$tolerance) & !all(theta$fvec==0) & all(diag(theta$jac)<0)){
+        theta$converged=T
+      }else{theta$converged=F}  
+    }else{theta$x=start_theta;theta$converged=F}
+  
   #Predict values
   beta=theta$x[1:k]
   gamma=theta$x[seq.int(length.out = m) + k]
@@ -44,7 +52,7 @@ LSMLE.fit=function(y,x,z,alpha=NULL,link="logit",link.phi="log",control=robustbe
   M.LSMLE=tryCatch(LSMLE_Cov_Matrix(mu_hat,phi_hat,x,z,alpha=alpha,linkobj=linkobj),error=function(e) NULL)
   if(is.null(M.LSMLE))
   {
-    vcov=std.error.LSMLE=NULL
+    vcov=std.error.LSMLE=NaN
   }else{
     vcov=M.LSMLE$Cov
     std.error.LSMLE=M.LSMLE$Std.Error
@@ -55,7 +63,7 @@ LSMLE.fit=function(y,x,z,alpha=NULL,link="logit",link.phi="log",control=robustbe
   str1=str2=NULL
   result$coefficients=coefficients
   result$vcov=vcov
-  pseudor2 <- if (var(eta) * var(qlogis(y)) <= 0){NA}
+  pseudor2 = if (var(eta) * var(qlogis(y)) <= 0){NA}
   else{cor(eta, linkobj$linkfun.mu$linkfun(y))^2}
   if(!is.null(theta$iter)){result$iter=theta$iter}
   result$converged=(theta$converged & all(!is.na(std.error.LSMLE)))
@@ -93,6 +101,7 @@ LSMLE.fit=function(y,x,z,alpha=NULL,link="logit",link.phi="log",control=robustbe
     result$std.error=coef.std.error
   }
   class(result)="LSMLE"
+  #gc()
   return(result)
 }
 
@@ -184,7 +193,7 @@ SaddlepointTest.LSMLE=function(object,FUN=NULL,...,thrd)
   msg="Results based on LSMLE."
   beta_hat=object$coefficient$mean
   if(missing(thrd)){thrd=tryCatch(parallel::detectCores(),error=function(e) 1)}
-  thrd=tryCatch(suppressWarnings(max(1,round(abs(thrd)))),error=function(e) 1)
+  else{thrd=tryCatch(suppressWarnings(max(1,round(abs(thrd)))),error=function(e) 1)}
   gamma_hat=object$coefficient$precision
   X=object$model$mean
   Z=object$model$precision
@@ -211,7 +220,6 @@ SaddlepointTest.LSMLE=function(object,FUN=NULL,...,thrd)
     general=F
     result=list()
     #Hipothesis
-    #browser()
     g=FUN
     eta_0=g(c(beta_hat,gamma_hat),...)
     ind_free=which(c(beta_hat,gamma_hat)==eta_0)
@@ -219,6 +227,9 @@ SaddlepointTest.LSMLE=function(object,FUN=NULL,...,thrd)
     if(length(ind_fix)<(m+k))
     {
       h_beta=tryCatch(suppressWarnings(stats::optim(par=c(beta_hat,gamma_hat)[ind_free],sup_K_psi_C,ind_free=ind_free,ind_fix=ind_fix,eta_0=eta_0[ind_fix],Beta=beta_hat,Gamma=gamma_hat,X=X,Z=Z,alpha=alpha,linkobj=linkobj,thrd=thrd,method="BFGS")$value),error=function(e) NULL)
+      if(is.null(h_beta) || is.infinite(h_beta)){
+        h_beta=tryCatch(suppressWarnings(stats::optim(par=c(beta_hat,gamma_hat)[ind_free],sup_K_psi,ind_free=ind_free,ind_fix=ind_fix,eta_0=eta_0[ind_fix],Beta=beta_hat,Gamma=gamma_hat,X=X,Z=Z,alpha=alpha,linkobj=linkobj,thrd=thrd,method="BFGS")$value),error=function(e) NULL)
+      }
       if(is.null(h_beta)){msg="The test does not reach the convergence"}
       df=length(ind_fix)
     }else{
@@ -226,6 +237,9 @@ SaddlepointTest.LSMLE=function(object,FUN=NULL,...,thrd)
       G_0=eta_0[(m+1):(m+k)]
       df=m+k
       h_beta=tryCatch(suppressWarnings(-(stats::nlminb(l0,K2_psi_C,Beta=beta_hat,Gamma=gamma_hat,Beta_0=B_0,Gamma_0=G_0,X=X,Z=Z,alpha=alpha,linkobj=linkobj,thrd=thrd))$objective),error=function(e) NULL)
+      if(is.null(h_beta) || is.infinite(h_beta)){
+        h_beta=tryCatch(suppressWarnings(-(stats::nlminb(l0,K2_psi,Beta=beta_hat,Gamma=gamma_hat,Beta_0=B_0,Gamma_0=G_0,X=X,Z=Z,alpha=alpha,linkobj=linkobj,thrd=thrd))$objective),error=function(e) NULL)
+      }
       if(is.null(h_beta)){msg="The test does not reach the convergence"}
     }
     #Result Register
@@ -242,8 +256,9 @@ SaddlepointTest.LSMLE=function(object,FUN=NULL,...,thrd)
 
 
 #' @export  
-plotenvelope.LSMLE=function(object,type=c("sweighted2","pearson","weighted","sweighted","sweighted.gamma","sweighted2.gamma","combined","combined.projection"),conf=0.95,n.sim=50,PrgBar=T,control=robustbetareg.control(...), ...)
+plotenvelope.LSMLE=function(object,type=c("sweighted2","pearson","weighted","sweighted","sweighted.gamma","sweighted2.gamma","combined","combined.projection","sweighted3"),conf=0.95,n.sim=50,PrgBar=T,control=robustbetareg.control(...), ...)
 {
+  #browser()
   if(missing(control)){control=robustbetareg.control(object)}
   type = match.arg(type)
   ylim.boolean=hasArg(ylim)
@@ -266,13 +281,17 @@ plotenvelope.LSMLE=function(object,type=c("sweighted2","pearson","weighted","swe
     y.sim=pmax(pmin(sapply(seq(1,n,1),function(i) rbeta(1,a[i],b[i])),1-.Machine$double.eps),.Machine$double.eps)
     est.mle=betareg.fit(x,y,z,link=link,link.phi = link.phi)
     start=c(est.mle$coefficients$mean,est.mle$coefficients$precision)
-    LSMLE.sim=tryCatch(LSMLE.Beta.Reg(y=y.sim,x=x,z=z,alpha=object$Tuning,link=link,link.phi=link.phi,start=start),error=function(e){LSMLE.sim$converged<-FALSE; return(LSMLE.sim)})
+    LSMLE.sim=tryCatch(LSMLE.fit(y=y.sim,x=x,z=z,alpha=object$Tuning,link=link,link.phi=link.phi,start=start),error=function(e){LSMLE.sim$converged<-FALSE; return(LSMLE.sim)})
     if(LSMLE.sim$converged)
     {
       if(type=="sweighted2")
       {
         ResEnvelop=rbind(ResEnvelop,sort(LSMLE.sim$residuals,decreasing = F))  
       }else{
+        #browser()
+        LSMLE.sim$y=y.sim
+        LSMLE.sim$model$mean=object$model$mean
+        LSMLE.sim$model$precision=object$model$precision
         ResEnvelop=rbind(ResEnvelop,sort(residuals(LSMLE.sim,type=type),decreasing = F))
       }
       k=k+1
@@ -289,6 +308,7 @@ plotenvelope.LSMLE=function(object,type=c("sweighted2","pearson","weighted","swe
   }
   par(mar=c(5.0,5.0,4.0,2.0),pch=16, cex=1.0, cex.lab=1.0, cex.axis=1.0, cex.main=1.5)
   ARG=append(list(y=residual,main="Envelope Plot", xlab="Normal quantiles",ylab="Residuals"),arg)
+  #ARG=append(list(y=residual,main="", xlab="Normal quantiles",ylab="Residuals"),arg)
   do.call(qqnorm,ARG)
   par(new=T)
   ARG=modifyList(ARG,list(y=Envelope[1,],axes=F,main = "",xlab="",ylab="",type="l",lty=1,lwd=1.0))
@@ -325,7 +345,7 @@ plotenvelope.LSMLE=function(object,type=c("sweighted2","pearson","weighted","swe
 #' residuals(fit,type="sweighted")
 #' 
 #' @export
-residuals.LSMLE=function(object,type=c("sweighted2","pearson","weighted","sweighted","sweighted.gamma","sweighted2.gamma","combined","combined.projection"))
+residuals.LSMLE=function(object,type=c("sweighted2","pearson","weighted","sweighted","sweighted.gamma","sweighted2.gamma","combined","combined.projection","sweighted3"))
 {
   type = match.arg(type)
   y=object$y
@@ -334,38 +354,37 @@ residuals.LSMLE=function(object,type=c("sweighted2","pearson","weighted","sweigh
   linkobj=set.link(link.mu=object$link,link.phi=object$link.phi)
   mu.predict=object$fitted.values$mu.predict
   phi.predict=object$fitted.values$phi.predict
-  if(type=="sweighted2")
-  {
+  switch(type,sweighted2={
     res=sweighted2_res(mu_hat=mu.predict,phi_hat=phi.predict,y=y,X=x,linkobj=linkobj)
-  }
-  if(type=="sweighted")
-  {
-    res=sweighted_res(mu_hat=mu.predict,phi_hat=phi.predict,y=y)
-  }
-  if(type=="pearson")
-  {
+  },
+  sweighted={
+    res=res=sweighted_res(mu_hat=mu.predict,phi_hat=phi.predict,y=y)
+  },
+  pearson={
     res=pearson_res(mu_hat=mu.predict,phi_hat=phi.predict,y=y)
-  }
-  if(type=="weighted")
-  {
+  },
+  weighted={
     res=weighted_res(mu_hat=mu.predict,phi_hat=phi.predict,y=y)
-  }
-  if(type=="sweighted.gamma")
-  {
+  },
+  sweighted.gamma={
     res=sweighted.gamma_res(mu_hat=mu.predict,phi_hat=phi.predict,y=y)
-  }
-  if(type=="sweighted2.gamma")
-  {
+  },
+  sweighted2.gamma={
     res=sweighted2.gamma_res(mu_hat=mu.predict,phi_hat=phi.predict,y=y,Z=z,linkobj=linkobj)
-  }
-  if(type=="combined")
-  {
+  },
+  combined={
     res=combined_res(mu_hat=mu.predict,phi_hat=phi.predict,y=y)
-  }
-  if(type=="combined.projection")
-  {
+  },
+  combined.projection={
     res=combined.projection_res(mu_hat=mu.predict,phi_hat=phi.predict,y=y,X=x,Z=z,linkobj=linkobj)
-  }
+  },
+  sweighted3={
+    res=sweighted3_res(mu_hat=mu.predict,phi_hat=phi.predict,alpha=object$Tuning,y=y,X=x,linkobj=linkobj)
+  },
+  
+  stop(gettextf("%s residual not recognised", sQuote(type)),
+       domain = NA))
+  
   return(res)
 }
 

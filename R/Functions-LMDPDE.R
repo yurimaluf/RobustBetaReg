@@ -22,7 +22,7 @@ LMDPDE.fit=function(y,x,z,alpha=NULL,link="logit",link.phi="log",control=robustb
     start_theta=as.numeric(do.call("c",mle$coefficients))
   }
   #Point Estimation
-  theta=tryCatch(nleqslv(start_theta,Psi_LMDPDE_Cpp,jac=Psi_LMDPDE_Jacobian_C,y=y,X=x,Z=z,alpha=alpha,link_mu=link,link_phi=link.phi,control=list(ftol=control$tolerance,maxit=control$maxit),method="Newton",jacobian = T),error=function(e){
+  theta=tryCatch(nleqslv(start_theta,Psi_LMDPDE_Cpp,jac=Psi_LMDPDE_Jacobian_C,y=y,X=x,Z=z,alpha=alpha,link_mu=link,link_phi=link.phi,control=list(ftol=1e-6,maxit=control$maxit),method="Newton",jacobian = T),error=function(e){
   theta$msg<-e$message;return(theta)})
   theta$converged=F
   if(all(abs(theta$fvec)<control$tolerance) & !all(theta$fvec==0) & all(diag(theta$jac)<0)){theta$converged=T}
@@ -44,7 +44,6 @@ LMDPDE.fit=function(y,x,z,alpha=NULL,link="logit",link.phi="log",control=robustb
     vcov=MM$Cov
     std.error.LMDPDE=MM$Std.Error
   }
-
   #Register of output values 
   y_star=log(y)-log(1-y)
   str1=str2=NULL
@@ -87,6 +86,7 @@ LMDPDE.fit=function(y,x,z,alpha=NULL,link="logit",link.phi="log",control=robustb
     result$std.error=coef.std.error
   }
   class(result)="LMDPDE"
+  #gc()
   return(result)
 }
 

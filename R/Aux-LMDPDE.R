@@ -19,10 +19,8 @@ Opt.Tuning.LMDPDE=function(y,x,z,link,link.phi,control)
   p=length(Est.param)
   for(k in 1:(M+1))
   {
-    control$start=Est.param
-    y<<-y
-    x<<-x
-    z<<-z
+    #control$start=Est.param
+    control$start=ponto.inicial.robst
     LMDPDE.par=tryCatch(LMDPDE.fit(y,x,z,alpha=alpha_tuning[k],link=link,link.phi=link.phi,control = control),error=function(e){LMDPDE.par$converged<-FALSE; return(LMDPDE.par)})
     if(!LMDPDE.par$converged)
     {
@@ -31,7 +29,8 @@ Opt.Tuning.LMDPDE=function(y,x,z,link,link.phi,control)
     }
     if(!LMDPDE.par$converged)
     {
-      control$start=ponto.inicial.robst
+      #control$start=ponto.inicial.robst
+      control$start=Est.param
       LMDPDE.par=tryCatch(LMDPDE.fit(y,x,z,alpha=alpha_tuning[k],link=link,link.phi=link.phi,control = control),error=function(e){LMDPDE.par$converged<-FALSE; return(LMDPDE.par)})
     }
     if(LMDPDE.par$converged)
@@ -60,7 +59,8 @@ Opt.Tuning.LMDPDE=function(y,x,z,link,link.phi,control)
   k=k+1
   while(sqv.unstable)
   {
-    control$start=Est.param
+    #control$start=Est.param
+    control$start=ponto.inicial.robst
     LMDPDE.par=tryCatch(LMDPDE.fit(y,x,z,alpha=alpha_tuning[k],link=link,link.phi=link.phi,control = control),error=function(e){LMDPDE.par$converged<-FALSE; return(LMDPDE.par)})
     if(!LMDPDE.par$converged)
     {
@@ -69,7 +69,8 @@ Opt.Tuning.LMDPDE=function(y,x,z,link,link.phi,control)
     }
     if(!LMDPDE.par$converged)
     {
-      control$start=ponto.inicial.robst
+      #control$start=ponto.inicial.robst
+      control$start=Est.param
       LMDPDE.par=tryCatch(LMDPDE.fit(y,x,z,alpha=alpha_tuning[k],link=link,link.phi=link.phi,control = control),error=function(e) {LMDPDE.par$converged<-FALSE; return(LMDPDE.par)})
     }
     if(LMDPDE.par$converged)
@@ -165,7 +166,7 @@ LMDPDE_Cov_Matrix=function(mu,phi,X,Z,alpha,linkobj)
   result$Sigma=Sigma
   
   result$Cov=V/n
-  result$Std.Error=c(sqrt(diag(V/n)))
+  result$Std.Error=suppressWarnings(c(sqrt(diag(V/n))))
   
   return(result)
 }
@@ -188,6 +189,7 @@ hatvalues.LMDPDE=function(object)
   return(diag(H))
 }
 
+#' @export
 coef.LMDPDE=function(object,model=c("full","mean","precision"))
 {
   cf <- object$coefficients
@@ -205,6 +207,7 @@ coef.LMDPDE=function(object,model=c("full","mean","precision"))
   })
 }
 
+#' @export
 predict.LMDPDE = function(object, newdata = NULL, type = c("response", "link", "precision", "variance", "quantile"), at = 0.5) 
 {
   type <- match.arg(type)
@@ -236,9 +239,9 @@ predict.LMDPDE = function(object, newdata = NULL, type = c("response", "link", "
     })
     return(rval)
   }else{
-    mf1=model.frame(object$formula,data=newdata)
-    x=model.matrix(object$formula,data=mf1,rhs = 1L)
-    z=model.matrix(object$formula,data=mf1,rhs = 2L)
+    newdata=tryCatch(as.data.frame(newdata),error=function(e){newdata})
+    x=model.matrix(object$formula,data=newdata,rhs = 1L)
+    z=model.matrix(object$formula,data=newdata,rhs = 2L)
     
     rval <- switch (type, response = {
       set.link(object$link,object$link.phi)$linkfun.mu$inv.link(x%*%object$coefficients$mean) 

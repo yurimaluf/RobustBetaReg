@@ -32,7 +32,9 @@ arma::mat Psi_LSMLE_Beta_Cpp(NumericVector mu_hat, NumericVector phi_hat, Numeri
   NumericVector y_star = Rcpp::log(y)-Rcpp::log((1-y));
   NumericVector mu_star = Rcpp::digamma(aq)-Rcpp::digamma(bq);
   NumericVector Tb = pow(link.d_linkmu(mu_hat),-1);
+  
   NumericVector f_q_star = Rcpp::pow(degbeta_C(y_star,mu_hat,phi_q),alpha);
+  
   NumericMatrix Phi_q_Tb_fqstar = Rcpp::diag(phi_q*Tb*f_q_star);
   NumericVector diff = y_star-mu_star;
   arma::mat diff_arma =as<arma::vec>(diff);
@@ -125,7 +127,6 @@ arma::mat Psi_LSMLE_Jacobian_C(arma::vec Theta, NumericVector y, arma::mat X,arm
   u_muphi=((y_star-mu_star)-phi_q*(mu_hat*trigamma(aq)-(1-mu_hat)*trigamma(bq)))/q;
   u_phiphi=(trigamma(phi_q)-trigamma(aq)*pow(mu_hat,2)-trigamma(bq)*pow(1-mu_hat,2))/pow(q,2);
   fqstar = pow(degbeta_C(y_star,mu_hat,phi_q),alpha);
-  
   //arma::vec u_mu_test =as<arma::vec>(u_phi);
   
   NumericVector core1, core2, core3;

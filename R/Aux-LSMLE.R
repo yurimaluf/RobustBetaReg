@@ -1,6 +1,7 @@
 # Auto Selecting tuning parameter algorithm
 Opt.Tuning.LSMLE=function(y,x,z,link,link.phi,control)
 {
+  #browser()
   if(missing(control)){control=robustbetareg.control()}
   control$alpha.optimal=FALSE
   LSMLE.list=LSMLE.par=list()
@@ -19,7 +20,8 @@ Opt.Tuning.LSMLE=function(y,x,z,link,link.phi,control)
   p=length(Est.param)
   for(k in 1:(M+1))
   {
-    control$start=Est.param
+    #control$start=Est.param
+    control$start=ponto.inicial.robst
     LSMLE.par=tryCatch(LSMLE.fit(y,x,z,alpha=alpha_tuning[k],link=link,link.phi=link.phi,control = control),error=function(e) {LSMLE.par$converged<-FALSE; return(LSMLE.par)})
     if(!LSMLE.par$converged)
     {
@@ -28,7 +30,8 @@ Opt.Tuning.LSMLE=function(y,x,z,link,link.phi,control)
     }
     if(!LSMLE.par$converged)
     {
-      control$start=ponto.inicial.robst
+      #control$start=ponto.inicial.robst
+      control$start=Est.param
       LSMLE.par=tryCatch(LSMLE.fit(y,x,z,alpha=alpha_tuning[k],link=link,link.phi=link.phi,control = control),error=function(e){LSMLE.par$converged<-FALSE; return(LSMLE.par)})
     }
     if(LSMLE.par$converged)
@@ -58,7 +61,8 @@ Opt.Tuning.LSMLE=function(y,x,z,link,link.phi,control)
   k=k+1
   while(sqv.unstable)
   {
-    control$start=Est.param
+    #control$start=Est.param
+    control$start=ponto.inicial.robst
     LSMLE.par=tryCatch(LSMLE.fit(y,x,z,alpha=alpha_tuning[k],link=link,link.phi=link.phi,control = control),error=function(e){LSMLE.par$converged<-FALSE; return(LSMLE.par)})
     if(!LSMLE.par$converged)
     {
@@ -67,7 +71,8 @@ Opt.Tuning.LSMLE=function(y,x,z,link,link.phi,control)
     }
     if(!LSMLE.par$converged)
     {
-      control$start=ponto.inicial.robst
+      control$start=Est.param
+      #control$start=ponto.inicial.robst
       LSMLE.par=tryCatch(LSMLE.fit(y,x,z,alpha=alpha_tuning[k],link=link,link.phi=link.phi,control = control),error=function(e){LSMLE.par$converged<-FALSE; return(LSMLE.par)})
     }
     if(LSMLE.par$converged)
@@ -163,7 +168,9 @@ LSMLE_Cov_Matrix=function(mu,phi,X,Z,alpha,linkobj)
   result$Lambda=Lambda
   result$Sigma=Sigma
   result$Cov=V/n
-  result$Std.Error=c(sqrt(diag(V/n)))
+  #temp
+  result$K=t(X)%*%Tb%*%Q.inv%*%(Phi^2)%*%C.k0%*%Lambda_mu_mu%*%Tb%*%X
+  result$Std.Error=suppressWarnings(c(sqrt(diag(V/n))))
   
   return(result)
 }
@@ -178,7 +185,7 @@ hatvalues.LSMLE=function(object)
   linkobj=set.link(link.mu=object$link,link.phi=object$link.phi)
   d.link.mu=linkobj$linkfun.mu$d.linkfun(mu_hat)
   
-  y_star=log(y)-log(1-y)
+  #y_star=log(y)-log(1-y)
   mu_star=digamma(mu_hat*phi_hat)-digamma((1-mu_hat)*phi_hat)
   V_star=trigamma(mu_hat*phi_hat)+trigamma((1-mu_hat)*phi_hat)
   W.PHI=diag(x=phi_hat*V_star*((d.link.mu)^(-2)))
@@ -186,6 +193,7 @@ hatvalues.LSMLE=function(object)
   return(diag(H))
 }
 
+#Supremum
 sup_K_psi_C=function(Theta_0,ind_free,ind_fix,eta_0,Beta,Gamma,X,Z,alpha,linkobj,thrd)
 {
   m=ncol(X)
@@ -209,7 +217,7 @@ K2_psi_C=function(l,Beta,Gamma,Beta_0,Gamma_0,X,Z,alpha,linkobj,thrd)
   l1=l[1:k]
   l2=l[(k+1):(k+m)]
   Psi.moment=LaplaceApx2_C(Beta,Gamma,Beta_0,Gamma_0,l1,l2,X,Z,alpha,linkobj,thrd=thrd)
-  return(mean(log(Psi.moment)))
+  return(mean(log(abs(Psi.moment))))
 }
 
 
@@ -227,8 +235,6 @@ LaplaceApx2_C=function(Beta,Gamma,Beta_0,Gamma_0,l1,l2,X,Z,alpha,linkobj,thrd)
   }
   Kx=(X%*%l1)/linkobj$linkfun.mu$d.linkfun(mu)
   Kz=(Z%*%l2)/linkobj$linkfun.phi$d.linkfun(phi)
-  n=length(mu)
-  La=NULL
   #browser()
   La=La_Cpp(mu, phi, mu_0, phi_0, alpha, Kx, Kz,thrd=thrd)
   return(La)
@@ -236,6 +242,226 @@ LaplaceApx2_C=function(Beta,Gamma,Beta_0,Gamma_0,l1,l2,X,Z,alpha,linkobj,thrd)
 
 
 ###################################################################################################
+
+sup_K_psi=function(Theta_0,ind_free,ind_fix,eta_0,Beta,Gamma,X,Z,alpha,linkobj,thrd)
+{
+  m=ncol(X)
+  k=ncol(Z)
+  #Vector assembling 
+  T_0=rep(0,(m+k))
+  T_0[ind_free]=Theta_0
+  T_0[ind_fix]=eta_0
+  B_0=T_0[1:m]
+  G_0=T_0[(m+1):(m+k)]
+  
+  l0=rep(0,(m+k))
+  return(suppressWarnings(-(stats::nlminb(l0,K2_psi,Beta=Beta,Gamma=Gamma,Beta_0=B_0,Gamma_0=G_0,X=X,Z=Z,alpha=alpha,linkobj=linkobj,thrd=thrd))$objective))
+}
+
+
+#Kumulant of Psi function
+K2_psi=function(l,Beta,Gamma,Beta_0,Gamma_0,X,Z,alpha,linkobj,thrd)
+{
+  k=ncol(X)
+  m=ncol(Z)
+  l1=l[1:k]
+  l2=l[(k+1):(k+m)]
+  Psi.moment=LaplaceApx2(Beta,Gamma,Beta_0,Gamma_0,l1,l2,X,Z,alpha,linkobj)
+  return(mean(log(abs(Psi.moment))))
+}
+
+LaplaceApx2=function(Beta,Gamma,Beta_0,Gamma_0,l1,l2,X,Z,alpha,linkobj)
+{
+  #t.max=25
+  #t.min=-25
+  #browser()
+  mu=mu_0=linkobj$linkfun.mu$inv.link(X%*%Beta)
+  phi=phi_0=linkobj$linkfun.phi$inv.link(Z%*%Gamma)
+  if(!all(Beta==Beta_0))
+  {
+    mu_0=linkobj$linkfun.mu$inv.link(X%*%Beta_0)  
+  }
+  if(!all(Gamma==Gamma_0))
+  {
+    phi_0=linkobj$linkfun.phi$inv.link(Z%*%Gamma_0)  
+  }
+  Kx=(X%*%l1)/linkobj$linkfun.mu$d.linkfun(mu)
+  Kz=(Z%*%l2)/linkobj$linkfun.phi$d.linkfun(phi)
+  n=length(mu)
+  La=NULL
+  for(i in 1:n)
+  {
+    opt=root.p(mu=mu[i],phi=phi[i],mu_0=mu_0[i],phi_0=phi_0[i],alpha=alpha,Kx=Kx[i],Kz=Kz[i])
+    y.0=opt$root
+    p.0=opt$value
+    
+    D.S=Derivatives.set(y.0,mu=mu[i],phi=phi[i],mu_0=mu_0[i],phi_0=phi_0[i],alpha=alpha,Kx=Kx[i],Kz=Kz[i])
+    d2p=D.S$D2
+    d3p=D.S$D3
+    d4p=D.S$D4
+    
+    q=1-alpha
+    phi_q=phi[i]/q
+    D.f=DX.f(y.0,mu=mu[i],phi=phi_q,alpha=alpha)
+    df=D.f$df
+    d2f=D.f$d2f
+    d3f=D.f$d3f
+    d4f=D.f$d4f
+    
+    a1=d4p/(8*d2p^2)-5*(d3p^2)/(24*d2p^3)
+    La=c(La,sqrt(2*pi/abs(d2p))*exp(p.0)*(1+a1))
+    #La=c(La,a1)
+  }
+  return(La)
+}
+
+# Find Saddlepoint
+root.p=function(mu,phi,mu_0,phi_0,alpha,Kx,Kz)
+{
+  #browser()
+  result=list()
+  roots=rootSolve::uniroot.all(d.p,lower=-25,upper=25,mu=mu,phi=phi,mu_0=mu_0,phi_0=phi_0,alpha=alpha,Kx=Kx,Kz=Kz)
+  if(length(roots)>1)
+  {
+    p.vector=p(roots,mu,phi,mu_0,phi_0,alpha,Kx,Kz)
+    index=which.max(p.vector)
+  }else{
+    p.vector=p(roots,mu,phi,mu_0,phi_0,alpha,Kx,Kz)
+    index=1
+  }
+  result$root=roots[index]
+  result$value=p.vector[index]
+  return(result)
+}
+
+#First Derivative of expoent of integrand
+d.p=function(y_star,mu,phi,mu_0,phi_0,alpha,Kx,Kz)
+{
+  q=1-alpha
+  phi_q=phi/q
+  a=mu*phi_q
+  b=(1-mu)*phi_q
+  muA=digamma(a)-digamma(b)
+  muB=digamma(b)-digamma(phi_q)
+  EXP.Y=exp(y_star)
+  
+  u1=phi_q*(y_star-muA)
+  u2=(mu*(y_star-muA)-Rmpfr::log1pexp(y_star)-muB)/q
+  d.u1=phi_q
+  d.u2=(mu-EXP.Y/(1+EXP.Y))/q
+  f=degbeta(y_star,mu = mu, phi=phi_q)^alpha
+  df=(alpha*phi_q*(mu+(mu-1)*EXP.Y)*f)/(1+EXP.Y)
+  dlnf=phi_0*(mu_0+(mu_0-1)*EXP.Y)/(1+EXP.Y)
+  
+  return((Kx*d.u1+Kz*d.u2)*f+(Kx*u1+Kz*u2)*df+dlnf)
+}
+
+#Expoent of Integrand Function
+p=function(y_star,mu,phi,mu_0,phi_0,alpha,Kx,Kz)
+{
+  q=1-alpha
+  phi_q=phi/q
+  a=mu*phi_q
+  b=(1-mu)*phi_q
+  muA=digamma(a)-digamma(b)
+  muB=digamma(b)-digamma(phi_q)
+  u1=Kx*phi_q*(y_star-muA)
+  u2=Kz*(mu*(y_star-muA)-Rmpfr::log1pexp(y_star)-muB)/q
+  
+  return((u2+u1)*degbeta(y_star,mu = mu, phi=phi_q)^alpha+log(degbeta(y_star,mu = mu_0, phi=phi_0)))
+  #return(exp(-(lbeta(a,b)+b*y_star+phi_q*log(1+exp(-y_star)))))
+}
+
+
+#Derivatives of expoent integrand
+Derivatives.set=function(y_star,mu,phi,mu_0,phi_0,alpha,Kx,Kz)
+{
+  result=list()
+  q=1-alpha
+  phi_q=phi/q
+  a=mu*phi_q
+  b=phi_q-a
+  muA=digamma(a)-digamma(b)
+  muB=digamma(b)-digamma(phi_q)
+  EXP.Y=exp(y_star)
+  
+  u1=phi_q*(y_star-muA)
+  u2=(mu*(y_star-muA)-Rmpfr::log1pexp(y_star)-muB)/q
+  d.u1=phi_q
+  d.u2=(mu-EXP.Y/(1+EXP.Y))/q
+  d2.u2=-(1/q)*EXP.Y/(1+EXP.Y)^2
+  d3.u2=(1/q)*EXP.Y*(EXP.Y-1)/(1+EXP.Y)^3
+  d4.u2=(-1/q)*EXP.Y*(-4*EXP.Y+exp(2*y_star)+1)/(1+EXP.Y)^4
+  
+  f=degbeta(y_star,mu = mu, phi=phi_q)^alpha
+  D.f=DX.f(y_star,mu,phi_q,alpha)
+  df=D.f$df
+  d2f=D.f$d2f
+  d3f=D.f$d3f
+  d4f=D.f$d4f
+  
+  DX.ln.f=dX.ln.f(y_star,mu_0,phi_0)
+  dlnf=DX.ln.f$d.ln.f
+  d2lnf=DX.ln.f$d2.ln.f
+  d3lnf=DX.ln.f$d3.ln.f
+  d4lnf=DX.ln.f$d4.ln.f
+  
+  D2=(Kz*d2.u2)*f+2*(Kx*d.u1+Kz*d.u2)*df+(Kx*u1+Kz*u2)*d2f+d2lnf
+  D3=(Kz*d3.u2)*f+3*(Kz*d2.u2)*df+3*(Kx*d.u1+Kz*d.u2)*d2f+(Kx*u1+Kz*u2)*d3f+d3lnf
+  D4=(Kz*d4.u2)*f+4*(Kz*d3.u2)*df+6*(Kz*d2.u2)*d2f+4*(Kx*d.u1+Kz*d.u2)*d3f+(Kx*u1+Kz*u2)*d4f+d4lnf
+  
+  result$D2=D2
+  result$D3=D3
+  result$D4=D4
+  
+  return(result)
+}
+
+#Derivative of EGB
+DX.f=function(y_star,mu,phi,alpha)
+{
+  result=list()
+  EGB=degbeta(y_star,mu,phi)^alpha
+  AP=alpha*phi
+  AMP=AP*mu
+  AMP.m1=AP*(mu-1)
+  EXP.Y=exp(y_star)
+  
+  df=(AMP+AMP.m1*EXP.Y)*EGB/(1+EXP.Y)
+  df2=(EGB/(1+EXP.Y)^2)*(AMP^(2)+EXP.Y^(2)*AMP.m1^2+AP*EXP.Y*(2*AMP.m1*mu-1))
+  df3=(EGB/(1+EXP.Y)^3)*(AMP^2*(AMP+EXP.Y*(AMP-AP-2))+(AMP.m1^2)*EXP.Y^(2)*(AMP+AMP.m1*EXP.Y+2)+AP*(2*AMP.m1*mu-1)*EXP.Y*(AMP+EXP.Y*(AMP.m1-1)+1))
+  
+  fa=EGB/(1+EXP.Y)^4
+  a1=AMP^(2)*(AMP-AP-2)*EXP.Y*(AMP+EXP.Y*(AMP-AP-2)+1)
+  a12=AMP^(3)*(AMP+EXP.Y*(AMP.m1-3))
+  a21=AMP.m1^(2)*(AMP+2)*exp(2*y_star)*(AMP+EXP.Y*(AMP.m1-1)+2)
+  a22=(AMP.m1*EXP.Y)^(3)*(AMP+AMP.m1*EXP.Y+3)
+  a31=AP*(2*AMP.m1*mu-1)*(AMP+1)*EXP.Y*(AMP+EXP.Y*(AMP.m1-2)+1)
+  a32=AP*(2*AMP.m1*mu-1)*(AMP.m1-1)*EXP.Y^(2)*(AMP+EXP.Y*(AMP.m1-1)+2)
+  
+  df4=fa*(a1+a12+a21+a22+a31+a32)
+  result$df=df
+  result$d2f=df2
+  result$d3f=df3
+  result$d4f=df4
+  return(result)
+}
+
+
+#Derivative of log-EGB
+dX.ln.f=function(y_star,mu,phi,alpha)
+{
+  if(missing(alpha)){alpha=1}
+  EXP.Y=exp(y_star)
+  AP=alpha*phi
+  result=list()
+  
+  result$d.ln.f=AP*(mu+(mu-1)*EXP.Y)/(1+EXP.Y)
+  result$d2.ln.f=-AP*EXP.Y/(1+EXP.Y)^2
+  result$d3.ln.f=AP*EXP.Y*(EXP.Y-1)/(1+EXP.Y)^3
+  result$d4.ln.f=-AP*EXP.Y*(-4*EXP.Y+(EXP.Y^2)+1)/(1+EXP.Y)^4
+  return(result)
+}
 
 #Laplace approximation second order
 LaplaceApx2_C_B=function(Beta,Gamma,Beta_0,Gamma_0,l1,l2,X,Z,alpha,linkobj,thrd)
@@ -292,7 +518,7 @@ root.p_C=function(mu,phi,mu_0,phi_0,alpha,Kx,Kz)
 
 
 ########################################################################################################
-
+#' @export
 coef.LSMLE=function(object,model=c("full","mean","precision"))
 {
   cf <- object$coefficients
@@ -310,7 +536,8 @@ coef.LSMLE=function(object,model=c("full","mean","precision"))
   })
 }
 
-predict.LMDPDE = function(object, newdata = NULL, type = c("response", "link", "precision", "variance", "quantile"), at = 0.5) 
+#' @export
+predict.LSMLE = function(object, newdata = NULL, type = c("response", "link", "precision", "variance", "quantile"), at = 0.5) 
 {
   type <- match.arg(type)
   if (type == "quantile") {
@@ -341,9 +568,9 @@ predict.LMDPDE = function(object, newdata = NULL, type = c("response", "link", "
     })
     return(rval)
   }else{
-    mf1=model.frame(object$formula,data=newdata)
-    x=model.matrix(object$formula,data=mf1,rhs = 1L)
-    z=model.matrix(object$formula,data=mf1,rhs = 2L)
+    newdata=tryCatch(as.data.frame(newdata),error=function(e){newdata})
+    x=model.matrix(object$formula,data=newdata,rhs = 1L)
+    z=model.matrix(object$formula,data=newdata,rhs = 2L)
     
     rval <- switch (type, response = {
       set.link(object$link,object$link.phi)$linkfun.mu$inv.link(x%*%object$coefficients$mean) 

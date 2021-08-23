@@ -42,6 +42,39 @@ sweighted2_res=function(mu_hat,phi_hat,y,X,linkobj)
 }
 
 #'
+sweighted3_res=function(mu_hat,phi_hat,alpha,y,X,linkobj)
+{
+  #browser()
+  n=length(mu_hat)
+  m=length(phi_hat)
+  q=1-alpha
+  if(m==1){phi_hat=rep(phi_hat,n)}
+  a_0=mu_hat*phi_hat
+  b_0=(1-mu_hat)*phi_hat
+  a_alpha=a_0*(1+alpha)
+  b_alpha=b_0*(1+alpha)
+
+  d.link.mu=linkobj$linkfun.mu$d.linkfun(mu_hat)
+  y_star=log(y)-log(1-y)
+  mu_star=digamma(a_alpha)-digamma(b_alpha)
+  v_alpha=trigamma(a_alpha)+trigamma(b_alpha)
+  c_alpha=(beta(a_alpha,b_alpha)^q)/beta(a_0,b_0)
+  w_alpha=(degbeta(y_star,mu_hat,phi_hat/q))^(alpha)
+  K_alpha=diag(v_alpha*c_alpha*(phi_hat/q)/d.link.mu^2)
+  H_alpha=sqrt(K_alpha)%*%X%*%solve(t(X)%*%K_alpha%*%X)%*%t(X)%*%sqrt(K_alpha)
+
+  #V_star=trigamma(a_alpha)+trigamma(b_alpha)
+  #W.PHI=diag(x=phi_hat*V_star*((d.link.mu)^(-2)))
+  #H=sqrt(W.PHI)%*%X%*%solve(t(X)%*%W.PHI%*%X)%*%t(X)%*%sqrt(W.PHI)
+  #nu=V_star*(1-diag(H))
+  
+  nu=c_alpha*v_alpha*(1-diag(H_alpha))/q
+  ri=(y_star-mu_star)*w_alpha/sqrt(nu)#standardized weighted residuals
+  
+  return(ri)
+}
+
+#'
 weighted_res=function(mu_hat,phi_hat,y)
 {
   y_star=log(y/(1-y))
@@ -180,6 +213,9 @@ star.obs=function(p.valor)
   }
   return(obs)
 }
+
+
+
 
 #'
 hatvalues=function(object)

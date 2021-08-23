@@ -56,6 +56,7 @@
 robustbetareg = function(formula,data,alpha,type=c("LSMLE","LMDPDE"),link = c("logit", "probit", "cloglog", "cauchit", "loglog"),
                          link.phi = NULL,control=robustbetareg.control(...), model = TRUE, y=TRUE,...)
 {
+  #browser()
   cl = match.call()
   type = match.arg(type)
   ocontrol=control
@@ -66,15 +67,15 @@ robustbetareg = function(formula,data,alpha,type=c("LSMLE","LMDPDE"),link = c("l
   mf = match.call(expand.dots = FALSE)
   m = match(c("formula", "data"), names(mf), 0L)
   mf = mf[c(1L, m)]
-  mf$drop.unused.levels <- TRUE
+  mf$drop.unused.levels = TRUE
   formula = Formula::as.Formula(formula)
-  oformula <- as.formula(formula)
+  oformula = as.formula(formula)
   if(length(formula)[2L] < 2L) {
-    formula <- Formula::as.Formula(formula(formula), ~1)
-    simple_formula <- TRUE
+    formula = Formula::as.Formula(formula(formula), ~1)
+    simple_formula = TRUE
   }else {
     if(length(formula)[2L] > 2L) {
-      formula <- Formula::Formula(formula(formula, rhs = 1:2))
+      formula = Formula::Formula(formula(formula, rhs = 1:2))
       warning("formula must not have more than two RHS parts")
     }
     simple_formula <- FALSE
@@ -120,10 +121,10 @@ robustbetareg = function(formula,data,alpha,type=c("LSMLE","LMDPDE"),link = c("l
   result$terms=list(mean = mtX, precision = mtZ, full = mt)
   result$call = cl
   result$formula=as.formula(formula)
+  #rm(y,x,z,mf1,yy)
+  #gc()
   return(result)
 }
-
-
 
 
 #' Control Parameter for Robust Beta Regression 
@@ -276,4 +277,30 @@ SaddlepointTest=function(object,FUN,...,thrd)
 {
   UseMethod("SaddlepointTest")
 }
+
+
+#' Predict
+#'  
+#' 
+#' Plot a simulated envelope of beta residuals, from LSMLE and LMDPDE objects.
+#' 
+#' 
+#' @param object Fitted model object of class "LSMLE" or "LMDPDE" (see \code{\link[RobustBetaReg:robustbetareg]{robustbetareg}}). 
+#' @param n.sim the number of simulation sample. Deafault n.sim=50. 
+#' @param conf the confidence level of the envelopes required. The default is to find 95 confidence envelopes.
+#' @param control a list of control arguments specified via \code{\link[RobustBetaReg:robustbetareg.control]{robustbetareg.control}}.
+#' @param ... other parameters to be passed through to plotting functions.
+#' 
+#' @return Return a simulated envelope graphic.
+#' 
+#' @examples 
+#' fit=robustbetareg(I(food/income)~income+persons|1,data=FoodExpenditure,alpha=0.08)
+#' plotenvelope(fit,n.sim=100)
+#' 
+#' @export
+predict=function(object, newdata=NULL, type = c("response", "link", "precision", "variance", "quantile"), at = 0.5)
+{
+  UseMethod("predict")  
+}
+
 
