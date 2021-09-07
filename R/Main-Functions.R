@@ -51,6 +51,8 @@
 #'    \code{model} \tab the full model frame \cr
 #'    \tab \cr
 #'    \code{y} \tab the response proportion vector \cr
+#'    \tab \cr
+#'    \code{data} \tab the dataset used \cr
 #' }
 #' @export  
 robustbetareg = function(formula,data,alpha,type=c("LSMLE","LMDPDE"),link = c("logit", "probit", "cloglog", "cauchit", "loglog"),
@@ -120,8 +122,8 @@ robustbetareg = function(formula,data,alpha,type=c("LSMLE","LMDPDE"),link = c("l
   if(model){result$model=list(mean = x, precision = z)}
   result$terms=list(mean = mtX, precision = mtZ, full = mt)
   result$call = cl
+  result$data = mf1
   result$formula=as.formula(formula)
-  #rm(y,x,z,mf1,yy)
   #gc()
   return(result)
 }
@@ -219,7 +221,7 @@ regbeta=function(n,mu,phi)
 #' plotenvelope(fit,n.sim=100)
 #' 
 #' @export
-plotenvelope=function(object,n.sim,conf,control=robustbetareg.control(...),...)
+plotenvelope=function(object,type=c("sweighted2","pearson","weighted","sweighted","sweighted.gamma","sweighted2.gamma","combined","combined.projection","sweighted3"),conf=0.95,n.sim=50,PrgBar=T,control=robustbetareg.control(...), ...)
 {
   UseMethod("plotenvelope")
 }

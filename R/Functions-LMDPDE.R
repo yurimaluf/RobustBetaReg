@@ -283,10 +283,21 @@ residuals.LMDPDE=function(object,type=c("sweighted2","pearson","weighted","sweig
 #' @export
 cooks.distance.LMDPDE=function(object,...)
 {
-  h =hatvalues.LMDPDE(object)
-  k = length(object$coefficients$mean)
-  res=residuals(object,type="pearson")
-  return(h*(res^2)/(k*(1-h)^2))
+  # h =hatvalues.LMDPDE(object)
+  # k = length(object$coefficients$mean)
+  # res=residuals(object,type="pearson")
+  # return(h*(res^2)/(k*(1-h)^2))
+  p=length(do.call("c",object$coefficients))
+  linkobj=set.link(link.mu = object$link, link.phi = object$link.phi)
+  y_hat=linkobj$linkfun.mu$inv.link(object$model$mean%*%object$coefficients$mean)
+  MSE=as.numeric(t(object$y-y_hat)%*%(object$y-y_hat)/(object$n-p))
+  D=NULL
+  for(i in 1:object$n){
+    fit.temp=robustbetareg(object$formula,data=object$data[-i,],alpha=object$Tuning)
+    y_hat_temp=linkobj$linkfun.mu$inv.link(object$model$mean%*%fit.temp$coefficients$mean)
+    D=c(D,t(y_hat-y_hat_temp)%*%(y_hat-y_hat_temp)/(MSE*p))
+  }
+  return(D)
 }
 
 

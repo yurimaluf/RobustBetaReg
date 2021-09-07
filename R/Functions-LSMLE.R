@@ -31,7 +31,6 @@ LSMLE.fit=function(y,x,z,alpha=NULL,link="logit",link.phi="log",control=robustbe
   #browser()
   q=1-alpha
   check=TRUE
-
   theta=tryCatch(nleqslv(start_theta,Psi_LSMLE_Cpp,jac=Psi_LSMLE_Jacobian_C,y=y,X=x,Z=z,alpha=alpha,link_mu=link,link_phi=link.phi,control=list(ftol=control$tolerance,maxit=control$maxit),method="Newton",jacobian = T),error=function(e){
     theta$msg<-e$message;check<<-F;return(theta)})
     if(check){
@@ -307,8 +306,8 @@ plotenvelope.LSMLE=function(object,type=c("sweighted2","pearson","weighted","swe
     arg$ylim=ylim
   }
   par(mar=c(5.0,5.0,4.0,2.0),pch=16, cex=1.0, cex.lab=1.0, cex.axis=1.0, cex.main=1.5)
-  ARG=append(list(y=residual,main="Envelope Plot", xlab="Normal quantiles",ylab="Residuals"),arg)
-  #ARG=append(list(y=residual,main="", xlab="Normal quantiles",ylab="Residuals"),arg)
+  #ARG=append(list(y=residual,main="Envelope Plot", xlab="Normal quantiles",ylab="Residuals"),arg)
+  ARG=append(list(y=residual,main="", xlab="Normal quantiles",ylab="Residuals"),arg)
   do.call(qqnorm,ARG)
   par(new=T)
   ARG=modifyList(ARG,list(y=Envelope[1,],axes=F,main = "",xlab="",ylab="",type="l",lty=1,lwd=1.0))
@@ -391,10 +390,21 @@ residuals.LSMLE=function(object,type=c("sweighted2","pearson","weighted","sweigh
 #' @export
 cooks.distance.LSMLE=function(object,...)
 {
-  h =hatvalues.LSMLE(object)
-  k = length(object$coefficients$mean)
-  res=residuals(object,type="pearson")
-  return(h*(res^2)/(k*(1-h)^2))
+  # h =hatvalues.LSMLE(object)
+  # k = length(object$coefficients$mean)
+  # res=residuals(object,type="pearson")
+  # return(h*(res^2)/(k*(1-h)^2))
+  #browser()
+  p=length(do.call("c",object$coefficients))
+  linkobj=set.link(link.mu = object$link, link.phi = object$link.phi)
+  y_hat=linkobj$linkfun.mu$inv.link(object$model$mean%*%object$coefficients$mean)
+  MSE=as.numeric(t(object$y-y_hat)%*%(object$y-y_hat)/(object$n-p))
+  D=NULL
+  for(i in 1:object$n){
+    fit.temp=robustbetareg(object$formula,data=object$data[-i,],alpha=object$Tuning)
+    y_hat_temp=linkobj$linkfun.mu$inv.link(object$model$mean%*%fit.temp$coefficients$mean)
+    D=c(D,t(y_hat-y_hat_temp)%*%(y_hat-y_hat_temp)/(MSE*p))
+  }
+  return(D)
 }
-
 

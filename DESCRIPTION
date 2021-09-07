@@ -27,7 +27,6 @@ Imports:
     Rcpp
 Suggests: 
     knitr,
-    ggplot,
     rmarkdown,
     testthat (>= 3.0.0)
 Roxygen: list(markdown = TRUE)

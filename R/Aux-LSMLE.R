@@ -47,7 +47,7 @@ Opt.Tuning.LSMLE=function(y,x,z,link,link.phi,control)
     LSMLE.list[[k]]<-LSMLE.par
     zq.t=unname(rbind(zq.t,do.call("c",LSMLE.par$coefficients)/do.call("c",LSMLE.par$std.error)))
   }
-  #browser()
+  
   sqv=as.numeric(SQV_Cpp(zq.t,n,p))
   if(all(sqv<=L))
   {
@@ -57,7 +57,7 @@ Opt.Tuning.LSMLE=function(y,x,z,link,link.phi,control)
     rm(LSMLE.list)
     return(LSMLE.par.star)
   }
-  #browser()
+  
   k=k+1
   while(sqv.unstable)
   {
@@ -96,7 +96,8 @@ Opt.Tuning.LSMLE=function(y,x,z,link,link.phi,control)
   }
   if(k>=K || unstable)
   {
-    LSMLE.par.star=LSMLE.list[[1]]
+    #LSMLE.par.star=LSMLE.list[[1]]
+    LSMLE.par.star=LSMLE.fit(y,x,z,alpha=0,link=link,link.phi=link.phi)
     LSMLE.par.star$sqv=sqv
     LSMLE.par.star$Optimal.Tuning=TRUE
     LSMLE.par.star$message="Lack of stability"
@@ -539,6 +540,7 @@ coef.LSMLE=function(object,model=c("full","mean","precision"))
 #' @export
 predict.LSMLE = function(object, newdata = NULL, type = c("response", "link", "precision", "variance", "quantile"), at = 0.5) 
 {
+  #browser()
   type <- match.arg(type)
   if (type == "quantile") {
     qfun <- function(at, mu, phi) {
