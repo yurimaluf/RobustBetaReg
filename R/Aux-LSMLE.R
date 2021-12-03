@@ -20,6 +20,7 @@ Opt.Tuning.LSMLE=function(y,x,z,link,link.phi,control)
   p=length(Est.param)
   for(k in 1:(M+1))
   {
+    #browser()
     #control$start=Est.param
     control$start=ponto.inicial.robst
     LSMLE.par=tryCatch(LSMLE.fit(y,x,z,alpha=alpha_tuning[k],link=link,link.phi=link.phi,control = control),error=function(e) {LSMLE.par$converged<-FALSE; return(LSMLE.par)})
@@ -62,11 +63,13 @@ Opt.Tuning.LSMLE=function(y,x,z,link,link.phi,control)
   while(sqv.unstable)
   {
     #control$start=Est.param
-    control$start=ponto.inicial.robst
+    control$start=ponto.inicial.temp
+    
     LSMLE.par=tryCatch(LSMLE.fit(y,x,z,alpha=alpha_tuning[k],link=link,link.phi=link.phi,control = control),error=function(e){LSMLE.par$converged<-FALSE; return(LSMLE.par)})
     if(!LSMLE.par$converged)
     {
-      control$start=ponto.inicial.temp
+      control$start=ponto.inicial.robst
+      #control$start=ponto.inicial.temp
       LSMLE.par=tryCatch(LSMLE.fit(y,x,z,alpha=alpha_tuning[k],link=link,link.phi=link.phi,control = control),error=function(e){LSMLE.par$converged<-FALSE; return(LSMLE.par)})
     }
     if(!LSMLE.par$converged)
@@ -108,6 +111,191 @@ Opt.Tuning.LSMLE=function(y,x,z,link,link.phi,control)
   }
   return(LSMLE.par.star)
 }
+
+# Auto Selecting tuning parameter algorithm 2
+Opt.Tuning.LSMLE.2=function(y,x,z,link,link.phi,control)
+{
+  #browser()
+  if(missing(control)){control=robustbetareg.control()}
+  control$alpha.optimal=FALSE
+  LSMLE.list=LSMLE.par=list()
+  zq.t=NULL
+  alpha_tuning=seq(0,0.4,0.02)
+  K=length(alpha_tuning)
+  M=control$M
+  L=control$L
+  n=length(y)
+  unstable=F
+  sqv.unstable=T
+  est.log.lik=tryCatch(suppressWarnings(betareg.fit(x,y,z,link=link,link.phi = link.phi)),error=function(e) NULL)
+  Est.param=do.call("c",est.log.lik$coefficients)
+  ponto.inicial.robst=ponto.inicial.temp=Initial.points(y,x,z)
+  names(ponto.inicial.robst)=names(ponto.inicial.temp)=names(Est.param)=c(colnames(x),colnames(z))
+  p=length(Est.param)
+  for(k in 1:10)
+  {
+    #browser()
+    #control$start=Est.param
+    control$start=ponto.inicial.robst
+    LSMLE.par=tryCatch(LSMLE.fit(y,x,z,alpha=alpha_tuning[k],link=link,link.phi=link.phi,control = control),error=function(e) {LSMLE.par$converged<-FALSE; return(LSMLE.par)})
+    if(!LSMLE.par$converged)
+    {
+      control$start=ponto.inicial.temp
+      LSMLE.par=tryCatch(LSMLE.fit(y,x,z,alpha=alpha_tuning[k],link=link,link.phi=link.phi,control = control),error=function(e){LSMLE.par$converged<-FALSE; return(LSMLE.par)})
+    }
+    if(!LSMLE.par$converged)
+    {
+      #control$start=ponto.inicial.robst
+      control$start=Est.param
+      LSMLE.par=tryCatch(LSMLE.fit(y,x,z,alpha=alpha_tuning[k],link=link,link.phi=link.phi,control = control),error=function(e){LSMLE.par$converged<-FALSE; return(LSMLE.par)})
+    }
+    if(LSMLE.par$converged)
+    {
+      ponto.inicial.temp=do.call("c",LSMLE.par$coefficients)
+    }
+    if(is.null(LSMLE.par) || any(is.na(do.call("c",LSMLE.par$coefficients)/do.call("c",LSMLE.par$std.error))) || is.null(do.call("c",LSMLE.par$std.error)))
+    {
+      sqv.unstable=F
+      unstable=T
+      break
+    }
+    LSMLE.list[[k]]<-LSMLE.par
+    zq.t=unname(rbind(zq.t,do.call("c",LSMLE.par$coefficients)/do.call("c",LSMLE.par$std.error)))
+  }
+  
+  sqv=as.numeric(SQV_Cpp(zq.t,n,p))
+  alpha.ind=max(0,which(sqv>L))
+  if(alpha.ind==0)
+  {
+    LSMLE.par.star<-LSMLE.list[[1]]
+    LSMLE.par.star$sqv=sqv
+    LSMLE.par.star$Optimal.Tuning=TRUE
+    rm(LSMLE.list)
+    return(LSMLE.par.star)
+  }
+  if(alpha.ind<8){
+    LSMLE.par.star<-LSMLE.list[[alpha.ind+1]]
+    LSMLE.par.star$sqv=sqv
+    LSMLE.par.star$Optimal.Tuning=TRUE
+    rm(LSMLE.list)
+    return(LSMLE.par.star)
+  }
+  
+  k=11
+  while(sqv.unstable)
+  {
+    #control$start=Est.param
+    control$start=ponto.inicial.temp
+    
+    LSMLE.par=tryCatch(LSMLE.fit(y,x,z,alpha=alpha_tuning[k],link=link,link.phi=link.phi,control = control),error=function(e){LSMLE.par$converged<-FALSE; return(LSMLE.par)})
+    if(!LSMLE.par$converged)
+    {
+      control$start=ponto.inicial.robst
+      #control$start=ponto.inicial.temp
+      LSMLE.par=tryCatch(LSMLE.fit(y,x,z,alpha=alpha_tuning[k],link=link,link.phi=link.phi,control = control),error=function(e){LSMLE.par$converged<-FALSE; return(LSMLE.par)})
+    }
+    if(!LSMLE.par$converged)
+    {
+      control$start=Est.param
+      #control$start=ponto.inicial.robst
+      LSMLE.par=tryCatch(LSMLE.fit(y,x,z,alpha=alpha_tuning[k],link=link,link.phi=link.phi,control = control),error=function(e){LSMLE.par$converged<-FALSE; return(LSMLE.par)})
+    }
+    if(LSMLE.par$converged)
+    {
+      ponto.inicial.temp=do.call("c",LSMLE.par$coefficients)  
+    }
+    if(any(is.na(do.call("c",LSMLE.par$coefficients)/do.call("c",LSMLE.par$std.error))) || is.null(do.call("c",LSMLE.par$std.error)))
+    {
+      unstable=T
+      break
+    }
+    LSMLE.list[[k]]=LSMLE.par
+    zq.t=unname(rbind(zq.t,do.call("c",LSMLE.par$coefficients)/do.call("c",LSMLE.par$std.error)))
+    sqv=as.numeric(SQV_Cpp(zq.t,n,p))
+    sqv.test=sqv[(k-M):(k-1)]
+    if(all(sqv.test<=L) || k==K )
+    {
+      sqv.unstable=F
+    }
+    k=k+1
+  }
+  if(k>=K || unstable)
+  {
+    #LSMLE.par.star=LSMLE.list[[1]]
+    #LSMLE.par.star=LSMLE.fit(y,x,z,alpha=0,link=link,link.phi=link.phi)
+    LSMLE.par.star=LSMLE.fit(y,x,z,alpha=alpha_tuning[k-1],link=link,link.phi=link.phi)
+    LSMLE.par.star$sqv=sqv
+    LSMLE.par.star$Optimal.Tuning=TRUE
+    LSMLE.par.star$message="Lack of stability"
+  }else{
+    LSMLE.par.star=LSMLE.list[[(k-M)]]
+    LSMLE.par.star$sqv=sqv
+    LSMLE.par.star$Optimal.Tuning=TRUE
+  }
+  return(LSMLE.par.star)
+}
+
+
+# Auto Selecting tuning parameter algorithm 3
+Opt.Tuning.LSMLE.3=function(y,x,z,link,link.phi,B,control)
+{
+  #browser()
+  if(missing(control)){control=robustbetareg.control()}
+  control$alpha.optimal=FALSE
+  LSMLE.list=LSMLE.par=list()
+  zq.t=parametro=stdError=NULL
+  alpha_tuning=seq(0,0.5,0.02)
+  K=length(alpha_tuning)
+  M=control$M
+  L=control$L
+  n=length(y)
+  unstable=F
+  sqv.unstable=T
+  est.log.lik=tryCatch(suppressWarnings(betareg.fit(x,y,z,link=link,link.phi = link.phi)),error=function(e) NULL)
+  Est.param=do.call("c",est.log.lik$coefficients)
+  ponto.inicial.robst=ponto.inicial.temp=Initial.points(y,x,z)
+  names(ponto.inicial.robst)=names(ponto.inicial.temp)=names(Est.param)=c(colnames(x),colnames(z))
+  p=length(Est.param)
+  for(k in 1:B)
+  {
+    #browser()
+    #control$start=Est.param
+    control$start=ponto.inicial.robst
+    LSMLE.par=tryCatch(LSMLE.fit(y,x,z,alpha=alpha_tuning[k],link=link,link.phi=link.phi,control = control),error=function(e) {LSMLE.par$converged<-FALSE; return(LSMLE.par)})
+    if(!LSMLE.par$converged)
+    {
+      control$start=ponto.inicial.temp
+      LSMLE.par=tryCatch(LSMLE.fit(y,x,z,alpha=alpha_tuning[k],link=link,link.phi=link.phi,control = control),error=function(e){LSMLE.par$converged<-FALSE; return(LSMLE.par)})
+    }
+    if(!LSMLE.par$converged)
+    {
+      #control$start=ponto.inicial.robst
+      control$start=Est.param
+      LSMLE.par=tryCatch(LSMLE.fit(y,x,z,alpha=alpha_tuning[k],link=link,link.phi=link.phi,control = control),error=function(e){LSMLE.par$converged<-FALSE; return(LSMLE.par)})
+    }
+    if(LSMLE.par$converged)
+    {
+      ponto.inicial.temp=do.call("c",LSMLE.par$coefficients)
+    }
+    if(is.null(LSMLE.par) || any(is.na(do.call("c",LSMLE.par$coefficients)/do.call("c",LSMLE.par$std.error))) || is.null(do.call("c",LSMLE.par$std.error)))
+    {
+      sqv.unstable=F
+      unstable=T
+      break
+    }
+    LSMLE.list[[k]]<-LSMLE.par
+    zq.t=unname(rbind(zq.t,do.call("c",LSMLE.par$coefficients)/do.call("c",LSMLE.par$std.error)))
+    
+    parametro=unname(rbind(parametro,do.call("c",LSMLE.par$coefficients)))
+    stdError=unname(rbind(stdError,do.call("c",LSMLE.par$std.error)))
+  }
+  
+  sqv=as.numeric(SQV_Cpp(zq.t,n,p))
+  lista=list(sqv=sqv,par=parametro,std=stdError)
+  return(lista)
+}
+
+
 
 #Sandwich Matrix - LSMLE
 LSMLE_Cov_Matrix=function(mu,phi,X,Z,alpha,linkobj)
@@ -570,6 +758,7 @@ predict.LSMLE = function(object, newdata = NULL, type = c("response", "link", "p
     })
     return(rval)
   }else{
+    #browser()
     newdata=tryCatch(as.data.frame(newdata),error=function(e){newdata})
     x=model.matrix(object$formula,data=newdata,rhs = 1L)
     z=model.matrix(object$formula,data=newdata,rhs = 2L)
