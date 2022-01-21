@@ -20,7 +20,6 @@ Opt.Tuning.LSMLE=function(y,x,z,link,link.phi,control)
   p=length(Est.param)
   for(k in 1:(M+1))
   {
-    #browser()
     #control$start=Est.param
     control$start=ponto.inicial.robst
     LSMLE.par=tryCatch(LSMLE.fit(y,x,z,alpha=alpha_tuning[k],link=link,link.phi=link.phi,control = control),error=function(e) {LSMLE.par$converged<-FALSE; return(LSMLE.par)})
@@ -49,6 +48,7 @@ Opt.Tuning.LSMLE=function(y,x,z,link,link.phi,control)
     zq.t=unname(rbind(zq.t,do.call("c",LSMLE.par$coefficients)/do.call("c",LSMLE.par$std.error)))
   }
   
+  #browser()
   sqv=as.numeric(SQV_Cpp(zq.t,n,p))
   if(all(sqv<=L))
   {
@@ -105,7 +105,7 @@ Opt.Tuning.LSMLE=function(y,x,z,link,link.phi,control)
     LSMLE.par.star$Optimal.Tuning=TRUE
     LSMLE.par.star$message="Lack of stability"
   }else{
-    LSMLE.par.star=LSMLE.list[[(k-M)]]
+    LSMLE.par.star=LSMLE.list[[(k-1-M)]]
     LSMLE.par.star$sqv=sqv
     LSMLE.par.star$Optimal.Tuning=TRUE
   }
@@ -221,14 +221,14 @@ Opt.Tuning.LSMLE.2=function(y,x,z,link,link.phi,control)
   }
   if(k>=K || unstable)
   {
-    #LSMLE.par.star=LSMLE.list[[1]]
-    #LSMLE.par.star=LSMLE.fit(y,x,z,alpha=0,link=link,link.phi=link.phi)
-    LSMLE.par.star=LSMLE.fit(y,x,z,alpha=alpha_tuning[k-1],link=link,link.phi=link.phi)
+    LSMLE.par.star=LSMLE.list[[1]]
+    LSMLE.par.star=LSMLE.fit(y,x,z,alpha=0,link=link,link.phi=link.phi)
+    #LSMLE.par.star=LSMLE.fit(y,x,z,alpha=alpha_tuning[k-1],link=link,link.phi=link.phi)
     LSMLE.par.star$sqv=sqv
     LSMLE.par.star$Optimal.Tuning=TRUE
     LSMLE.par.star$message="Lack of stability"
   }else{
-    LSMLE.par.star=LSMLE.list[[(k-M)]]
+    LSMLE.par.star=LSMLE.list[[(k-1-M)]]
     LSMLE.par.star$sqv=sqv
     LSMLE.par.star$Optimal.Tuning=TRUE
   }
