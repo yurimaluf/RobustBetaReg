@@ -8,7 +8,7 @@ Authors@R:
            email = "yurimaluf@gmail.com",
            comment = c(ORCID = "YOUR-ORCID-ID"))
 Description: Robust beta regression for modeling beta-distributed dependent variables, e.g., rates and proportions.
-Depends: R (>= 3.0.0), betareg, nleqslv
+Depends: R (>= 3.0.0), betareg, nleqslv, zoo
 License: GPL-3
 Encoding: UTF-8
 LazyData: true
@@ -23,6 +23,7 @@ Imports:
     Formula,
     robustbase,
     Matrix,
+    zoo,
     parallel,
     Rcpp
 Suggests: 
