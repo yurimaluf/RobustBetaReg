@@ -4,8 +4,16 @@
 \alias{robustbetareg.control}
 \title{Control Parameter for Robust Beta Regression}
 \usage{
-robustbetareg.control(object, start = NULL, alpha.optimal = TRUE,
-tolerance = 0.001, maxit = 250, L = 0.02, M = 3, ... )
+robustbetareg.control(
+  object,
+  start = NULL,
+  alpha.optimal = TRUE,
+  tolerance = 0.001,
+  maxit = 250,
+  L = 0.02,
+  M = 3,
+  ...
+)
 }
 \arguments{
 \item{object}{fitted model object of class "LSMLE" or "LMDPDE".}

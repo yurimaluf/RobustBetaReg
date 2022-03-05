@@ -513,8 +513,6 @@ return(result);
 
 
 
-
-
 /*  LMDPDE - Functions C++  */
 
 arma::mat Psi_LMDPDE_Beta_Cpp(NumericVector mu_hat, NumericVector phi_hat, NumericVector y, arma::mat X,arma::mat Z, double alpha, StringVector link_mu,StringVector link_phi)

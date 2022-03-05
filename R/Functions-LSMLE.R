@@ -280,6 +280,7 @@ plotenvelope.LSMLE=function(object,type=c("sweighted2","pearson","weighted","swe
     y.sim=pmax(pmin(sapply(seq(1,n,1),function(i) rbeta(1,a[i],b[i])),1-.Machine$double.eps),.Machine$double.eps)
     est.mle=betareg.fit(x,y,z,link=link,link.phi = link.phi)
     start=c(est.mle$coefficients$mean,est.mle$coefficients$precision)
+    #start=c(3.5,-3.4,6)
     LSMLE.sim=tryCatch(LSMLE.fit(y=y.sim,x=x,z=z,alpha=object$Tuning,link=link,link.phi=link.phi,start=start),error=function(e){LSMLE.sim$converged<-FALSE; return(LSMLE.sim)})
     if(LSMLE.sim$converged)
     {

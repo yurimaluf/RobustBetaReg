@@ -3,13 +3,19 @@
 \name{residuals.LMDPDE}
 \alias{residuals.LMDPDE}
 \alias{residuals.LSMLE}
-\title{Residuals Method for \code{robustbetareg} Objects}
+\title{Residuals Method for robustbetareg Objects}
 \usage{
-\method{residuals}{LSMLE}(object, type = c("sweighted2", "pearson", "weighted", 
-"sweighted", "sweighted.gamma", "sweighted2.gamma", "combined", "combined.projection"))
+\method{residuals}{LMDPDE}(
+  object,
+  type = c("sweighted2", "pearson", "weighted", "sweighted", "sweighted.gamma",
+    "sweighted2.gamma", "combined", "combined.projection")
+)
 
-\method{residuals}{LMDPDE}(object, type = c("sweighted2", "pearson", "weighted",
-"sweighted", "sweighted.gamma", "sweighted2.gamma", "combined", "combined.projection"))
+\method{residuals}{LSMLE}(
+  object,
+  type = c("sweighted2", "pearson", "weighted", "sweighted", "sweighted.gamma",
+    "sweighted2.gamma", "combined", "combined.projection", "sweighted3")
+)
 }
 \arguments{
 \item{object}{fitted model object of class "LMDPDE" or "LSMLE".}

@@ -4,14 +4,23 @@
 \alias{plotenvelope}
 \title{Simulated Envelope of Residuals}
 \usage{
-plotenvelope(object, n.sim, conf, control = robustbetareg.control(...), ...)
+plotenvelope(
+  object,
+  type = c("sweighted2", "pearson", "weighted", "sweighted", "sweighted.gamma",
+    "sweighted2.gamma", "combined", "combined.projection", "sweighted3"),
+  conf = 0.95,
+  n.sim = 50,
+  PrgBar = T,
+  control = robustbetareg.control(...),
+  ...
+)
 }
 \arguments{
 \item{object}{Fitted model object of class "LSMLE" or "LMDPDE" (see \code{\link[RobustBetaReg:robustbetareg]{robustbetareg}}).}
 
-\item{n.sim}{the number of simulation sample. Deafault n.sim=50.}
-
 \item{conf}{the confidence level of the envelopes required. The default is to find 95 confidence envelopes.}
+
+\item{n.sim}{the number of simulation sample. Deafault n.sim=50.}
 
 \item{control}{a list of control arguments specified via \code{\link[RobustBetaReg:robustbetareg.control]{robustbetareg.control}}.}
 
