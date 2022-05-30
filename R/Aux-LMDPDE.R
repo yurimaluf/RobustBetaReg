@@ -107,6 +107,157 @@ Opt.Tuning.LMDPDE=function(y,x,z,link,link.phi,control)
   return(LMDPDE.par.star)
 }
 
+Opt.Tuning.LMDPDE.3=function(y,x,z,link,link.phi,control)
+{
+  if(missing(control)){control=robustbetareg.control()}
+  control$alpha.optimal=FALSE
+  LMDPDE.list=LMDPDE.par=list()
+  zq.t=NULL
+  alpha_tuning=seq(0,0.6,0.02)
+  K=length(alpha_tuning)
+  M1=11
+  M=control$M
+  L=control$L
+  n=length(y)
+  unstable=F
+  sqv.unstable=T
+  #browser()
+  est.log.lik=tryCatch(suppressWarnings(betareg.fit(x,y,z,link=link,link.phi = link.phi)),error=function(e) NULL)
+  #est.log.lik=tryCatch(suppressWarnings(betareg.fit(x,y,z,link=link,link.phi = link.phi), control=betareg.control(start=Initial.points(y,x,z))),error=function(e) NULL)
+  if(is.null(est.log.lik))
+  {
+    est.log.lik=tryCatch(suppressWarnings(betareg.fit(x,y,z,link=link,link.phi = link.phi), control=betareg.control(start=Initial.points(y,x,z))),error=function(e) NULL)
+    #est.log.lik=tryCatch(suppressWarnings(betareg.fit(x,y,z,link=link,link.phi = link.phi)),error=function(e) NULL)
+  }
+  if(!is.null(est.log.lik)){
+    Est.param=do.call("c",est.log.lik$coefficients)
+    names(Est.param)=c(colnames(x),colnames(z))
+  }else{
+    Est.param=Initial.points(y,x,z)
+  }
+  ponto.inicial.robst=ponto.inicial.temp=Initial.points(y,x,z)
+  names(ponto.inicial.robst)=names(ponto.inicial.temp)=c(colnames(x),colnames(z))
+  p=length(Est.param)
+  for(k in 1:M1)
+  {
+    #browser()
+    control$start=Est.param
+    #control$start=ponto.inicial.temp
+    #control$start=ponto.inicial.robst
+    LMDPDE.par=tryCatch(LMDPDE.fit(y,x,z,alpha=alpha_tuning[k],link=link,link.phi=link.phi,control = control),error=function(e) {LMDPDE.par$converged<-FALSE; return(LMDPDE.par)})
+    if(!LMDPDE.par$converged)
+    {
+      control$start=ponto.inicial.temp
+      #control$start=ponto.inicial.robst
+      LMDPDE.par=tryCatch(LMDPDE.fit(y,x,z,alpha=alpha_tuning[k],link=link,link.phi=link.phi,control = control),error=function(e){LMDPDE.par$converged<-FALSE; return(LMDPDE.par)})
+    }
+    if(!LMDPDE.par$converged)
+    {
+      control$start=ponto.inicial.robst
+      #control$start=Est.param
+      #control$start=ponto.inicial.robst
+      LMDPDE.par=tryCatch(LMDPDE.fit(y,x,z,alpha=alpha_tuning[k],link=link,link.phi=link.phi,control = control),error=function(e){LMDPDE.par$converged<-FALSE; return(LMDPDE.par)})
+    }
+    if(LMDPDE.par$converged)
+    {
+      ponto.inicial.temp=do.call("c",LMDPDE.par$coefficients)
+    }
+    if(is.null(LMDPDE.par) || any(is.na(do.call("c",LMDPDE.par$coefficients)/do.call("c",LMDPDE.par$std.error))) || is.null(do.call("c",LMDPDE.par$std.error)))
+    {
+      sqv.unstable=F
+      unstable=T
+      break
+    }
+    LMDPDE.list[[k]]<-LMDPDE.par
+    zq.t=unname(rbind(zq.t,do.call("c",LMDPDE.par$coefficients)/do.call("c",LMDPDE.par$std.error)))
+  }
+  #browser()
+  sqv=as.numeric(SQV_Cpp(zq.t,n,p))
+  alpha.ind=max(0,which(sqv>L))
+  if(alpha.ind==0)#Step-2: Todos a baixo de L
+  {
+    LMDPDE.par.star<-LMDPDE.list[[1]]
+    LMDPDE.par.star$sqv=sqv
+    LMDPDE.par.star$Optimal.Tuning=TRUE
+    rm(LMDPDE.list)
+    return(LMDPDE.par.star)
+  }
+  if(alpha.ind<8){
+    LMDPDE.par.star<-LMDPDE.list[[alpha.ind+1]]
+    LMDPDE.par.star$sqv=sqv
+    LMDPDE.par.star$Optimal.Tuning=TRUE
+    rm(LMDPDE.list)
+    return(LMDPDE.par.star)
+  }
+  
+  reached=FALSE
+  k=M1+1
+  while(sqv.unstable & !reached)
+  {
+    #browser()
+    control$start=Est.param
+    #control$start=ponto.inicial.robst
+    LMDPDE.par=tryCatch(LMDPDE.fit(y,x,z,alpha=alpha_tuning[k],link=link,link.phi=link.phi,control = control),error=function(e){LMDPDE.par$converged<-FALSE; return(LMDPDE.par)})
+    if(!LMDPDE.par$converged)
+    {
+      #control$start=Est.param
+      control$start=ponto.inicial.temp
+      #control$start=ponto.inicial.robst
+      LMDPDE.par=tryCatch(LMDPDE.fit(y,x,z,alpha=alpha_tuning[k],link=link,link.phi=link.phi,control = control),error=function(e){LMDPDE.par$converged<-FALSE; return(LMDPDE.par)})
+    }
+    if(!LMDPDE.par$converged)
+    {
+      #control$start=ponto.inicial.temp
+      #control$start=Est.param
+      control$start=ponto.inicial.robst
+      LMDPDE.par=tryCatch(LMDPDE.fit(y,x,z,alpha=alpha_tuning[k],link=link,link.phi=link.phi,control = control),error=function(e){LMDPDE.par$converged<-FALSE; return(LMDPDE.par)})
+    }
+    if(LMDPDE.par$converged)
+    {
+      ponto.inicial.temp=do.call("c",LMDPDE.par$coefficients)  
+    }
+    if(any(is.na(do.call("c",LMDPDE.par$coefficients)/do.call("c",LMDPDE.par$std.error))) || is.null(do.call("c",LMDPDE.par$std.error)))
+    {
+      unstable=T
+      break
+    }
+    LMDPDE.list[[k]]=LMDPDE.par
+    zq.t=unname(rbind(zq.t,do.call("c",LMDPDE.par$coefficients)/do.call("c",LMDPDE.par$std.error)))
+    sqv=as.numeric(SQV_Cpp(zq.t,n,p))
+    sqv.test=sqv[(k-M):(k-1)]
+    if(all(sqv.test<=L))
+    {
+      sqv.unstable=F
+    }
+    k=k+1
+    if(k>=K)#Condition of Step 6
+    {
+      reached=TRUE
+    }
+  }
+  if(reached)
+  {
+    #browser()
+    k=suppressWarnings(max(1,min(which(rollapply(sqv<L,M,sum)==M)))+M+1)
+  }
+  if(k>=K || unstable)
+  {
+    LMDPDE.par.star=LMDPDE.list[[1]]
+    #LMDPDE.par.star=LMDPDE.fit(y,x,z,alpha=0,link=link,link.phi=link.phi)
+    #LMDPDE.par.star=LMDPDE.fit(y,x,z,alpha=alpha_tuning[k-1],link=link,link.phi=link.phi)
+    LMDPDE.par.star$sqv=sqv
+    LMDPDE.par.star$Optimal.Tuning=TRUE
+    LMDPDE.par.star$message="Lack of stability"
+  }else{
+    LMDPDE.par.star=LMDPDE.list[[(k-1-M)]]
+    #LMDPDE.par.star=LMDPDE.list[[(k-M)]]
+    LMDPDE.par.star$sqv=sqv
+    LMDPDE.par.star$Optimal.Tuning=TRUE
+  }
+  return(LMDPDE.par.star)
+}
+
+
 
 # Sandwich Matrix - LMDPDE
 LMDPDE_Cov_Matrix=function(mu,phi,X,Z,alpha,linkobj)

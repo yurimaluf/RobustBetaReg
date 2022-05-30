@@ -14,7 +14,7 @@ LMDPDE.fit=function(y,x,z,alpha=NULL,link="logit",link.phi="log",control=robustb
   m=ncol(z)
   if(alpha.optimal)
   {
-    return(Opt.Tuning.LMDPDE(y,x,z,link,link.phi,control))
+    return(Opt.Tuning.LMDPDE.3(y,x,z,link,link.phi,control))
   }
   if(is.null(start_theta))
   {
@@ -22,10 +22,26 @@ LMDPDE.fit=function(y,x,z,alpha=NULL,link="logit",link.phi="log",control=robustb
     start_theta=as.numeric(do.call("c",mle$coefficients))
   }
   #Point Estimation
-  theta=tryCatch(nleqslv(start_theta,Psi_LMDPDE_Cpp,jac=Psi_LMDPDE_Jacobian_C,y=y,X=x,Z=z,alpha=alpha,link_mu=link,link_phi=link.phi,control=list(ftol=1e-6,maxit=control$maxit),method="Newton",jacobian = T),error=function(e){
-  theta$msg<-e$message;return(theta)})
-  theta$converged=F
-  if(all(abs(theta$fvec)<control$tolerance) & !all(theta$fvec==0) & all(diag(theta$jac)<0)){theta$converged=T}
+  check=TRUE
+  theta=tryCatch(optim(par=start_theta,fn=D_alpha,gr=Psi_LMDPDE_Cpp,y=y,X=x,Z=z,alpha=alpha,link_mu=link,link_phi=link.phi,control = list(fnscale=-1)),error=function(e){
+    theta$msg<-e$message;check<<-F;return(theta)})
+  if(check){
+    if(theta$convergence==0){
+      theta$converged=T
+      theta$x=theta$par
+    }else{
+      theta$converged=F
+      theta$x=start_theta
+    }
+  }else{
+    theta$converged=F
+    theta$x=start_theta
+  }
+  
+  # theta=tryCatch(nleqslv(start_theta,Psi_LMDPDE_Cpp,jac=Psi_LMDPDE_Jacobian_C,y=y,X=x,Z=z,alpha=alpha,link_mu=link,link_phi=link.phi,control=list(ftol=1e-6,maxit=control$maxit),method="Newton",jacobian = T),error=function(e){
+  # theta$msg<-e$message;return(theta)})
+  # theta$converged=F
+  # if(all(abs(theta$fvec)<control$tolerance) & !all(theta$fvec==0) & all(diag(theta$jac)<0)){theta$converged=T}
   
   #Predict values
   beta=theta$x[1:k]

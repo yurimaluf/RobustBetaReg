@@ -198,7 +198,7 @@ degbeta=function(y_star,mu,phi,log=FALSE)
 #'@export 
 regbeta=function(n,mu,phi)
 {
-  h=rbeta(mu*phi,(1-mu)*phi)
+  h=rbeta(n,mu*phi,(1-mu)*phi)
   return(log(h)-log(1-h))
 }
 

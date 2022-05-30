@@ -7,6 +7,12 @@ Psi_LSMLE_Cpp <- function(Theta, y, X, Z, alpha, link_mu, link_phi) {
     .Call(`_RobustBetaReg_Psi_LSMLE_Cpp`, Theta, y, X, Z, alpha, link_mu, link_phi)
 }
 
+#' @useDynLib RobustBetaReg, .registration=TRUE
+#' @importFrom Rcpp evalCpp
+L_alpha <- function(Theta, y, X, Z, alpha, link_mu, link_phi) {
+    .Call(`_RobustBetaReg_L_alpha`, Theta, y, X, Z, alpha, link_mu, link_phi)
+}
+
 Psi_LSMLE_Jacobian_C <- function(Theta, y, X, Z, alpha, link_mu, link_phi) {
     .Call(`_RobustBetaReg_Psi_LSMLE_Jacobian_C`, Theta, y, X, Z, alpha, link_mu, link_phi)
 }
@@ -29,6 +35,12 @@ La_CppB <- function(p0, y0, mu, phi, mu_0, phi_0, alpha, Kx, Kz, thrd) {
 
 Psi_LMDPDE_Cpp <- function(Theta, y, X, Z, alpha, link_mu, link_phi) {
     .Call(`_RobustBetaReg_Psi_LMDPDE_Cpp`, Theta, y, X, Z, alpha, link_mu, link_phi)
+}
+
+#' @useDynLib RobustBetaReg, .registration=TRUE
+#' @importFrom Rcpp evalCpp
+D_alpha <- function(Theta, y, X, Z, alpha, link_mu, link_phi) {
+    .Call(`_RobustBetaReg_D_alpha`, Theta, y, X, Z, alpha, link_mu, link_phi)
 }
 
 Psi_LMDPDE_Jacobian_C <- function(Theta, y, X, Z, alpha, link_mu, link_phi) {

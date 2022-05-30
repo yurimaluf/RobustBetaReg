@@ -33,7 +33,9 @@ arma::mat Psi_LSMLE_Beta_Cpp(NumericVector mu_hat, NumericVector phi_hat, Numeri
   NumericVector mu_star = Rcpp::digamma(aq)-Rcpp::digamma(bq);
   NumericVector Tb = pow(link.d_linkmu(mu_hat),-1);
   
-  NumericVector f_q_star = Rcpp::pow(degbeta_C(y_star,mu_hat,phi_q),alpha);
+  //PONTO ALTERACAO
+  //NumericVector f_q_star = Rcpp::pow(degbeta_C(y_star,mu_hat,phi_q),alpha);
+  NumericVector f_q_star = Rcpp::pow(degbeta_CR(y,mu_hat,phi_q),alpha);
   
   NumericMatrix Phi_q_Tb_fqstar = Rcpp::diag(phi_q*Tb*f_q_star);
   NumericVector diff = y_star-mu_star;
@@ -58,7 +60,11 @@ arma::mat Psi_LSMLE_Gamma_Cpp(NumericVector mu_hat, NumericVector phi_hat, Numer
   NumericVector mu_dagger = Rcpp::digamma(bq)-Rcpp::digamma(phi_q);
   
   NumericVector Tg = pow(link.d_linkphi(phi_hat),-1);
-  NumericVector f_q_star = Rcpp::pow(degbeta_C(y_star,mu_hat,phi_q),alpha);
+  
+  //PONTO ALTERACAO
+  //NumericVector f_q_star = Rcpp::pow(degbeta_C(y_star,mu_hat,phi_q),alpha);
+  NumericVector f_q_star = Rcpp::pow(degbeta_CR(y,mu_hat,phi_q),alpha);
+  
   NumericVector eta =  mu_hat*(y_star-mu_star)+(y_dagger-mu_dagger);
   NumericMatrix Tg_fqstar = Rcpp::diag(Tg*f_q_star/q);
   arma::mat eta_arma =as<arma::vec>(eta);
@@ -86,6 +92,32 @@ arma::mat Psi_LSMLE_Cpp(arma::vec Theta, NumericVector y, arma::mat X,arma::mat 
   arma::mat psi_gamma = Psi_LSMLE_Gamma_Cpp(mu_hat,phi_hat,y,X,Z,alpha,link_mu,link_phi);
   arma::mat psi = join_cols(psi_beta,psi_gamma);
   return(psi.t());
+}
+
+//' @useDynLib RobustBetaReg, .registration=TRUE
+//' @importFrom Rcpp evalCpp
+// [[Rcpp::export]]
+double L_alpha(arma::vec Theta, NumericVector y, arma::mat X, arma::mat Z, double alpha, StringVector link_mu, StringVector link_phi){
+  double L_q;
+  double q = 1-alpha;
+  int k = X.n_cols;
+  int m = Z.n_cols;
+  Link link;
+  link.setLinkMu(link_mu);
+  link.setLinkPhi(link_phi);
+  arma::vec Beta=Theta.subvec(0,k-1);
+  arma::vec Gamma=Theta.subvec(k,k+m-1);
+  NumericVector mu_hat = link.inv_linkmu(eta(X,Beta));
+  NumericVector phi_hat = link.inv_linkphi(eta(Z,Gamma));
+  NumericVector phi_q=phi_hat/q;
+  NumericVector f_q_star = degbeta_CR(y,mu_hat,phi_q);
+  
+  if(alpha==0){
+    L_q = sum(Rcpp::log(f_q_star));
+  }else{
+    L_q = sum((Rcpp::pow(f_q_star,alpha)-1)/alpha);
+  }
+  return(L_q);
 }
 
 // [[Rcpp::export]]
@@ -510,9 +542,6 @@ return(result);
 }
 
 
-
-
-
 /*  LMDPDE - Functions C++  */
 
 arma::mat Psi_LMDPDE_Beta_Cpp(NumericVector mu_hat, NumericVector phi_hat, NumericVector y, arma::mat X,arma::mat Z, double alpha, StringVector link_mu,StringVector link_phi)
@@ -535,7 +564,8 @@ arma::mat Psi_LMDPDE_Beta_Cpp(NumericVector mu_hat, NumericVector phi_hat, Numer
   NumericVector diff2 = mu_star_alpha-mu_star;
   
   //Matrixes
-  NumericMatrix Phi_Tb_Walpha = Rcpp::diag(Phi_Tb*Rcpp::pow(degbeta_C(y_star,mu_hat,phi_hat),alpha));
+  //NumericMatrix Phi_Tb_Walpha = Rcpp::diag(Phi_Tb*Rcpp::pow(degbeta_C(y_star,mu_hat,phi_hat),alpha));
+  NumericMatrix Phi_Tb_Walpha = Rcpp::diag(Phi_Tb*Rcpp::pow(degbeta_CR(y,mu_hat,phi_hat),alpha));
   NumericMatrix Phi_Tb_Calpha = Rcpp::diag(Phi_Tb*Rcpp::exp(Rcpp::lbeta(a_alpha,b_alpha)-(1+alpha)*Rcpp::lbeta(a0,b0)));
   //arma Matrixes
   arma::mat Phi_Tb_Walpha_arma =as<arma::mat>(Phi_Tb_Walpha);
@@ -571,7 +601,8 @@ arma::mat Psi_LMDPDE_Gamma_Cpp(NumericVector mu_hat, NumericVector phi_hat, Nume
   eta =  mu_hat*(y_star-mu_star)+(y_dagger-mu_dagger);
   E_eta =  mu_hat*(mu_star_alpha-mu_star)+(mu_dagger_alpha-mu_dagger);
   //Matrixes
-  NumericMatrix Tg_Walpha = Rcpp::diag(Tg*Rcpp::pow(degbeta_C(y_star,mu_hat,phi_hat),alpha));
+  //NumericMatrix Tg_Walpha = Rcpp::diag(Tg*Rcpp::pow(degbeta_C(y_star,mu_hat,phi_hat),alpha));
+  NumericMatrix Tg_Walpha = Rcpp::diag(Tg*Rcpp::pow(degbeta_CR(y,mu_hat,phi_hat),alpha));
   NumericMatrix Tg_Calpha = Rcpp::diag(Tg*Rcpp::exp(Rcpp::lbeta(a_alpha,b_alpha)-(1+alpha)*Rcpp::lbeta(a0,b0)));
   //arma Matrixes
   arma::mat Tg_Walpha_arma =as<arma::mat>(Tg_Walpha);
@@ -601,6 +632,39 @@ arma::mat Psi_LMDPDE_Cpp(arma::vec Theta, NumericVector y, arma::mat X,arma::mat
   arma::mat psi = join_cols(psi_beta,psi_gamma);
   return(psi.t());
 }
+
+
+//' @useDynLib RobustBetaReg, .registration=TRUE
+//' @importFrom Rcpp evalCpp
+// [[Rcpp::export]]
+double D_alpha(arma::vec Theta, NumericVector y, arma::mat X, arma::mat Z, double alpha, StringVector link_mu, StringVector link_phi){
+  double D_q;
+  double q = 1-alpha;
+  int k = X.n_cols;
+  int m = Z.n_cols;
+  Link link;
+  link.setLinkMu(link_mu);
+  link.setLinkPhi(link_phi);
+  arma::vec Beta=Theta.subvec(0,k-1);
+  arma::vec Gamma=Theta.subvec(k,k+m-1);
+  NumericVector mu_hat = link.inv_linkmu(eta(X,Beta));
+  NumericVector phi_hat = link.inv_linkphi(eta(Z,Gamma));
+  
+  if(alpha==0){
+    D_q = sum(Rcpp::log(degbeta_CR(y,mu_hat,phi_hat)));
+  }else{
+    NumericVector a0 = mu_hat*phi_hat;
+    NumericVector b0 = (1-mu_hat)*phi_hat;
+    NumericVector a_alpha = a0*(1+alpha);
+    NumericVector b_alpha = b0*(1+alpha);
+    NumericVector E_alpha = Rcpp::exp(Rcpp::lbeta(a_alpha,b_alpha)-(1+alpha)*Rcpp::lbeta(a0,b0));
+    D_q=sum((1+alpha)/(alpha)*Rcpp::pow(degbeta_CR(y,mu_hat,phi_hat),alpha)-E_alpha);
+  }
+
+  return(D_q);
+}
+
+
 
 // [[Rcpp::export]]
 arma::mat Psi_LMDPDE_Jacobian_C(arma::vec Theta, NumericVector y, arma::mat X,arma::mat Z, double alpha, StringVector link_mu,StringVector link_phi)

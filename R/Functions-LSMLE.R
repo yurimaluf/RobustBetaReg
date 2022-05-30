@@ -18,7 +18,7 @@ LSMLE.fit=function(y,x,z,alpha=NULL,link="logit",link.phi="log",control=robustbe
   m=ncol(z)
   if(alpha.optimal)
   {
-    return(Opt.Tuning.LSMLE(y,x,z,link,link.phi,control))
+    return(Opt.Tuning.LSMLE.3(y,x,z,link,link.phi,control))
   }
   if(is.null(start_theta))
   {
@@ -31,13 +31,28 @@ LSMLE.fit=function(y,x,z,alpha=NULL,link="logit",link.phi="log",control=robustbe
   #browser()
   q=1-alpha
   check=TRUE
-  theta=tryCatch(nleqslv(start_theta,Psi_LSMLE_Cpp,jac=Psi_LSMLE_Jacobian_C,y=y,X=x,Z=z,alpha=alpha,link_mu=link,link_phi=link.phi,control=list(ftol=control$tolerance,maxit=control$maxit),method="Newton",jacobian = T),error=function(e){
+  theta=tryCatch(optim(par=start_theta,fn=L_alpha,gr=Psi_LSMLE_Cpp,y=y,X=x,Z=z,alpha=alpha,link_mu=link,link_phi=link.phi,control = list(fnscale=-1)),error=function(e){
     theta$msg<-e$message;check<<-F;return(theta)})
-    if(check){
-      if(all(abs(theta$fvec)<control$tolerance) & !all(theta$fvec==0) & all(diag(theta$jac)<0)){
-        theta$converged=T
-      }else{theta$converged=F}  
-    }else{theta$x=start_theta;theta$converged=F}
+  if(check){
+    if(theta$convergence==0){
+      theta$converged=T
+      theta$x=theta$par
+    }else{
+      theta$converged=F
+      theta$x=start_theta
+    }
+  }else{
+    theta$converged=F
+    theta$x=start_theta
+  }
+  # theta=tryCatch(nleqslv(start_theta,Psi_LSMLE_Cpp,jac=Psi_LSMLE_Jacobian_C,y=y,X=x,Z=z,alpha=alpha,link_mu=link,link_phi=link.phi,control=list(ftol=control$tolerance,maxit=control$maxit),method="Newton",jacobian = T),error=function(e){
+  #   theta$msg<-e$message;check<<-F;return(theta)})
+  # if(check){
+  #   if(all(abs(theta$fvec)<control$tolerance) & !all(theta$fvec==0) & all(diag(theta$jac)<0)){
+  #     theta$converged=T
+  #   }else{theta$converged=F}  
+  # }else{theta$x=start_theta;theta$converged=F}
+  
   
   #Predict values
   beta=theta$x[1:k]

@@ -26,6 +26,21 @@ NumericVector degbeta_C(NumericVector y_star, NumericVector mu, NumericVector ph
   return(result);
 }
 
+NumericVector degbeta_CR(NumericVector y, NumericVector mu, NumericVector phi){
+  //Calling dbeta from R
+  Function f("dbeta");
+  //Next Code is interpreted as dbeta(y,a0,b0)
+  NumericVector a0=mu*phi;
+  NumericVector b0=(1-mu)*phi;
+  NumericVector f0 = f(y,Named("shape1")=a0,_["shape2"]=b0);
+  f0 = f0*y*(1-y);
+  return(f0);
+}
+
+
+
+
+
 
 class Link{
 public:
